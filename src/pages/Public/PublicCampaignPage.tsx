@@ -7,6 +7,7 @@ import CampaignMobilePage, {
 import type { PrizeDefinition } from "../../components/prizes/PrizePoolEditor";
 import {
   extractPrizeIdFromCode,
+  getCustomerParticipations,
   getCustomerRewards,
   getPublicCampaign,
   joinPublicCampaign,
@@ -14,6 +15,7 @@ import {
   requestLoginCode,
   verifyLoginCode,
   type PublicCampaign,
+  type PublicParticipation,
   type PublicReward,
 } from "../../api/publicApi";
 import { extractApiError } from "../../api/client";
@@ -43,6 +45,7 @@ export default function PublicCampaignPage() {
   const [codeSent, setCodeSent] = useState(false);
 
   const [rewards, setRewards] = useState<PublicReward[]>([]);
+  const [participations, setParticipations] = useState<PublicParticipation[]>([]);
   const [revealingReward, setRevealingReward] = useState<PublicReward | null>(null);
   const [winningIndex, setWinningIndex] = useState<number | undefined>(undefined);
 
@@ -80,6 +83,10 @@ export default function PublicCampaignPage() {
     } catch (err) {
       console.warn("Erro ao buscar rewards:", err);
     }
+    try {
+      const parts = await getCustomerParticipations(slug, phone);
+      setParticipations(parts);
+    } catch { /* ignora */ }
   }
 
   async function handleRequestCode(e: FormEvent<HTMLFormElement>) {
@@ -118,11 +125,15 @@ export default function PublicCampaignPage() {
       } catch {
         /* ignora se já participou ou se campanha não tá ativa */
       }
-      // Carrega rewards ANTES de liberar a roleta, pra o botão já vir destravado
+      // Carrega rewards + participations ANTES de liberar a roleta/stamps
       try {
         const list = await getCustomerRewards(slug, result.phone);
         setRewards(list);
-      } catch { /* segue mesmo se falhar */ }
+      } catch { /* segue */ }
+      try {
+        const parts = await getCustomerParticipations(slug, result.phone);
+        setParticipations(parts);
+      } catch { /* segue */ }
       localStorage.setItem(PHONE_STORAGE_KEY, result.phone);
       setPhone(result.phone);
       setRegistered(true);
@@ -190,6 +201,10 @@ export default function PublicCampaignPage() {
         const list = await getCustomerRewards(slug, phoneValue);
         setRewards(list);
       } catch { /* segue */ }
+      try {
+        const parts = await getCustomerParticipations(slug, phoneValue);
+        setParticipations(parts);
+      } catch { /* segue */ }
       localStorage.setItem(PHONE_STORAGE_KEY, phoneValue);
       setPhone(phoneValue);
       setRegistered(true);
@@ -228,17 +243,23 @@ export default function PublicCampaignPage() {
 
   const display: CampaignDisplay | null = useMemo(() => {
     if (!campaign) return null;
+    // Pega progresso atual do cliente nesta campanha (se já participou)
+    const part = participations.find((p) => p.campaignId === campaign.id);
     return {
       id: campaign.id,
       name: campaign.name,
       description: campaign.description,
       status: campaign.status,
-      mechanics: campaign.mechanics.map((m) => ({
-        type: m.type,
-        config: m.config as CampaignDisplay["mechanics"][number]["config"],
-      })),
+      mechanics: campaign.mechanics.map((m) => {
+        const progressEntry = part?.progress.find((p) => p.mechanicType === m.type);
+        return {
+          type: m.type,
+          config: m.config as CampaignDisplay["mechanics"][number]["config"],
+          currentProgress: progressEntry?.progress,
+        };
+      }),
     };
-  }, [campaign]);
+  }, [campaign, participations]);
 
   if (loading) {
     return <FullScreenMessage>Carregando…</FullScreenMessage>;

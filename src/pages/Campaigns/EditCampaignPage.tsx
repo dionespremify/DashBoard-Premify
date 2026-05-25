@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useNavigate, useParams, Link } from "react-router";
 import PageMeta from "../../components/common/PageMeta";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
@@ -11,6 +11,7 @@ import { getBranding, type Branding } from "../../api/branding";
 import type { WizardDimensionQuestion } from "../../api/wizard";
 import PrizePoolEditor, { type PrizeDefinition } from "../../components/prizes/PrizePoolEditor";
 import Tabs from "../../components/common/Tabs";
+import { uploadImage } from "../../api/uploads";
 import CustomerFormConfigEditor from "../../components/campaigns/CustomerFormConfigEditor";
 import CampaignMobilePage, {
   type CampaignBranding,
@@ -314,6 +315,17 @@ function DimensionInput({
     );
   }
 
+  if (question.type === "image") {
+    return (
+      <EditSingleImageInput
+        label={question.label}
+        placeholder={placeholder}
+        value={(value as string) ?? ""}
+        onChange={(v) => onChange(v)}
+      />
+    );
+  }
+
   if (question.type === "boolean") {
     const checked = value === true || value === "true";
     return (
@@ -426,6 +438,83 @@ function DimensionInput({
     <div>
       <Label>{question.label}</Label>
       <Input placeholder={placeholder} value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
+
+function EditSingleImageInput({
+  label,
+  placeholder,
+  value,
+  onChange,
+}: {
+  label: string;
+  placeholder?: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    setUploading(true);
+    try {
+      const res = await uploadImage(file, "misc");
+      onChange(res.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao enviar imagem");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  return (
+    <div>
+      <Label>{label}</Label>
+      {value ? (
+        <div className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+          <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-900 shrink-0 border border-gray-300 dark:border-gray-700">
+            <img src={value} alt="" className="w-full h-full object-cover" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">✓ Imagem salva no servidor</div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="px-3 h-8 text-xs text-brand-600 hover:text-brand-700 border border-brand-300 rounded disabled:opacity-50"
+              >
+                {uploading ? "Enviando…" : "Trocar"}
+              </button>
+              <button
+                type="button"
+                onClick={() => onChange("")}
+                className="px-3 h-8 text-xs text-error-500 hover:text-error-700 border border-error-300 rounded"
+              >
+                Remover
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="w-full p-4 text-sm font-medium text-brand-600 bg-brand-50 rounded-xl border-2 border-dashed border-brand-300 hover:bg-brand-100 dark:bg-brand-500/10 dark:border-brand-500/40 dark:text-brand-300 disabled:opacity-50"
+        >
+          {uploading ? "Enviando…" : "📷 Enviar imagem"}
+        </button>
+      )}
+      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
+      {placeholder && <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{placeholder}</p>}
+      {error && <p className="mt-1 text-xs text-error-500">{error}</p>}
     </div>
   );
 }

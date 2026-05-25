@@ -81,6 +81,27 @@ export async function getCustomerRewards(tenantSlug: string, phone: string): Pro
   return data;
 }
 
+export interface PublicParticipation {
+  id: number;
+  campaignId: number;
+  campaignName: string;
+  customerId: number;
+  customerPhone: string;
+  status: string;
+  joinedAt: string;
+  progress: {
+    mechanicId: number;
+    mechanicType: string;
+    progress?: unknown;
+    completedAt?: string | null;
+  }[];
+}
+
+export async function getCustomerParticipations(tenantSlug: string, phone: string): Promise<PublicParticipation[]> {
+  const { data } = await apiClient.get<PublicParticipation[]>(`/public/${tenantSlug}/customers/${phone}/participations`);
+  return data;
+}
+
 export async function requestLoginCode(tenantSlug: string, email: string): Promise<void> {
   await apiClient.post(`/public/auth/request-code`, { tenantSlug, email });
 }

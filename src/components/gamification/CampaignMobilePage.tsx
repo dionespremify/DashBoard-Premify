@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import WheelSVG, { type WheelTheme } from "./WheelSVG";
 import CelebrationModal from "./CelebrationModal";
+import StampCard from "./StampCard";
 import type { PrizeDefinition } from "../prizes/PrizePoolEditor";
 
 export interface CampaignBranding {
@@ -20,8 +21,14 @@ export interface CampaignMechanicData {
     prizes?: PrizeDefinition[];
     min_purchase_cents?: number;
     theme?: WheelTheme;
+    // Stamps
+    target_stamps?: number;
+    reward?: string;
+    stamp_image_url?: string;
     [k: string]: unknown;
   } | null;
+  /** Progresso atual do cliente nessa mecânica (vem do backend após registrar/logar) */
+  currentProgress?: unknown;
 }
 
 export interface CampaignDisplay {
@@ -191,14 +198,26 @@ export default function CampaignMobilePage({
           </div>
         )}
 
-        {/* Sem roleta — mostra mecânicas em texto */}
-        {!hideMechanic && !wheel && (
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20">
-            <p className="text-sm opacity-80 text-center">
-              Essa campanha usa: {campaign.mechanics.map((m) => m.type).join(", ")}
-            </p>
-          </div>
-        )}
+        {/* Cartão fidelidade (stamps) — UI dedicada */}
+        {!hideMechanic && !wheel && (() => {
+          const stamps = campaign.mechanics.find((m) => m.type === "stamps");
+          if (stamps) {
+            return (
+              <StampCard
+                config={stamps.config ?? {}}
+                progress={stamps.currentProgress as { stamps?: number; target?: number; cycles_completed?: number } | null}
+                buttonColor={buttonColor}
+              />
+            );
+          }
+          return (
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20">
+              <p className="text-sm opacity-80 text-center">
+                Essa campanha usa: {campaign.mechanics.map((m) => m.type).join(", ")}
+              </p>
+            </div>
+          );
+        })()}
 
         {bottomSlot && <div className="pt-4">{bottomSlot}</div>}
 

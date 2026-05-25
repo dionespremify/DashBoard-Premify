@@ -344,7 +344,7 @@ function CampaignPreviewModal({
           </button>
         </div>
         <div className="flex-1 overflow-auto">
-          <CampaignMobilePage branding={previewBranding} campaign={display} interactive={false} />
+          <CampaignMobilePage branding={previewBranding} campaign={display} interactive={false} demoMode />
         </div>
       </div>
     </div>
