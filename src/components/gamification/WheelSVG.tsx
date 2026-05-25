@@ -113,8 +113,8 @@ export default function WheelSVG({
   if (slices.length === 0) {
     return (
       <div
-        className="flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300 rounded-full"
-        style={{ width: size, height: size }}
+        className="flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300 rounded-full w-full max-w-[300px] aspect-square"
+        style={{ maxWidth: size }}
       >
         Sem prêmios configurados
       </div>
@@ -125,7 +125,7 @@ export default function WheelSVG({
   const themeStyle = getThemeStyle(theme);
 
   return (
-    <div className="relative inline-block" style={{ width: size, height: size }}>
+    <div className="relative w-full aspect-square" style={{ maxWidth: size }}>
       {/* Halo/glow externo (neon e vegas) */}
       {(theme === "neon" || theme === "vegas") && (
         <div
@@ -139,7 +139,7 @@ export default function WheelSVG({
         />
       )}
 
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full block">
         <defs>
           <filter id={`neonGlow-${theme}`} x="-30%" y="-30%" width="160%" height="160%">
             <feGaussianBlur stdDeviation="2.5" result="blur" />

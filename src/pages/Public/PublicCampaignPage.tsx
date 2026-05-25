@@ -118,6 +118,11 @@ export default function PublicCampaignPage() {
       } catch {
         /* ignora se já participou ou se campanha não tá ativa */
       }
+      // Carrega rewards ANTES de liberar a roleta, pra o botão já vir destravado
+      try {
+        const list = await getCustomerRewards(slug, result.phone);
+        setRewards(list);
+      } catch { /* segue mesmo se falhar */ }
       localStorage.setItem(PHONE_STORAGE_KEY, result.phone);
       setPhone(result.phone);
       setRegistered(true);
@@ -153,21 +158,38 @@ export default function PublicCampaignPage() {
     setSubmitting(true);
     setError(null);
     try {
+      const emailValue = formValues.email?.trim();
+
       await registerPublicCustomer({
         tenantSlug: slug,
         phone: phoneValue,
         name: formValues.name?.trim() || undefined,
-        email: formValues.email?.trim() || undefined,
+        email: emailValue || undefined,
         birthdate: formValues.birthdate?.trim() || undefined,
         gender: formValues.gender?.trim() || undefined,
         cpfCnpj: formValues.cpf_cnpj?.trim() || undefined,
         address: formValues.address?.trim() || undefined,
       });
+
+      // Se forneceu email, exige verificação via código antes de liberar a roleta.
+      if (emailValue) {
+        await requestLoginCode(slug, emailValue);
+        setLoginEmail(emailValue);
+        setCodeSent(true);
+        setAuthPhase("login_code");
+        return;
+      }
+
+      // Sem email: já joina e libera direto.
       try {
         await joinPublicCampaign({ tenantSlug: slug, phone: phoneValue, campaignId });
       } catch {
         // ignora "campanha não ativa" — usuário ainda pode ver rewards anteriores
       }
+      try {
+        const list = await getCustomerRewards(slug, phoneValue);
+        setRewards(list);
+      } catch { /* segue */ }
       localStorage.setItem(PHONE_STORAGE_KEY, phoneValue);
       setPhone(phoneValue);
       setRegistered(true);
@@ -361,18 +383,8 @@ export default function PublicCampaignPage() {
       </form>
     )
   ) : pendingReward && !revealingReward ? (
-    <div className="bg-yellow-400/20 backdrop-blur-md border border-yellow-300/40 rounded-2xl p-5 text-center">
-      <div className="text-3xl mb-2">🎁</div>
-      <p className="font-bold mb-1">Você tem um prêmio pra revelar!</p>
-      <button
-        type="button"
-        onClick={() => startReveal(pendingReward)}
-        className="mt-2 px-6 py-2.5 rounded-lg font-semibold"
-        style={{ backgroundColor: branding.buttonColor || "#FF6B35", color: "white" }}
-      >
-        Toque pra revelar
-      </button>
-    </div>
+    // Quando tem prêmio pendente, o botão da própria roleta já dispara o reveal — não precisa de card extra.
+    null
   ) : revealingReward ? (
     <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20 text-center">
       <p className="text-sm opacity-80 mb-1">Código do seu prêmio</p>
@@ -388,11 +400,14 @@ export default function PublicCampaignPage() {
   return (
     <>
       <PageMeta title={`${campaign.name} | ${campaign.tenant.name}`} description={campaign.description ?? ""} />
-      <div className="min-h-screen w-full" style={{ backgroundColor: branding.backgroundColor || "#1a1a2e" }}>
+      <div className="min-h-screen w-full">
         <CampaignMobilePage
           branding={branding}
           campaign={display}
-          interactive={false}
+          interactive={!!pendingReward && !revealingReward}
+          onCtaClick={() => pendingReward && startReveal(pendingReward)}
+          ctaLabel={pendingReward ? "🎁 Girar a roleta!" : "Girar a roleta!"}
+          hideMechanic={!registered}
           autoSpinOnMount={revealingReward !== null}
           winningPrizeIndex={winningIndex}
           rewardCode={revealingReward?.code}

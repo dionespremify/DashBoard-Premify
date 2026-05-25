@@ -49,7 +49,7 @@ export default function BrandingPage() {
   const [backgroundColor, setBackgroundColor] = useState("#1a1a2e");
   const [backgroundImageUrl, setBackgroundImageUrl] = useState("");
   const [buttonColor, setButtonColor] = useState("#FF6B35");
-  const [wheelTheme, setWheelTheme] = useState<WheelTheme>("vegas");
+  const [wheelTheme, setWheelTheme] = useState<WheelTheme>("classic");
 
   // Pega 1 campanha real (se houver) pra preview, senão demo
   const [previewCampaign, setPreviewCampaign] = useState<CampaignDisplay>(DEMO_CAMPAIGN);
@@ -65,7 +65,7 @@ export default function BrandingPage() {
         if (b.backgroundColor) setBackgroundColor(b.backgroundColor);
         if (b.backgroundImageUrl) setBackgroundImageUrl(b.backgroundImageUrl);
         if (b.buttonColor) setButtonColor(b.buttonColor);
-        if (b.wheelTheme) setWheelTheme(b.wheelTheme);
+        setWheelTheme(b.wheelTheme ?? "classic");
       } catch (err) {
         if (active) setError(extractApiError(err, "Erro ao carregar branding"));
       } finally {

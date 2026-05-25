@@ -61,6 +61,8 @@ interface Props {
   celebrationSoundUrl?: string;
   /** Modo demo (preview no painel): habilita o botão e gira a roleta com prêmio aleatório */
   demoMode?: boolean;
+  /** Quando true, oculta a mecânica (roleta/etc) — usado pra tela pré-autenticação */
+  hideMechanic?: boolean;
 }
 
 export default function CampaignMobilePage({
@@ -79,6 +81,7 @@ export default function CampaignMobilePage({
   rewardCode,
   celebrationSoundUrl,
   demoMode = false,
+  hideMechanic = false,
 }: Props) {
   const wheel = campaign.mechanics.find((m) => m.type === "wheel");
   const prizes = useMemo(
@@ -122,7 +125,7 @@ export default function CampaignMobilePage({
 
   return (
     <div
-      className="relative w-full min-h-full flex flex-col items-center text-white"
+      className="relative w-full min-h-screen flex flex-col items-center text-white"
       style={containerStyle}
     >
       {/* Overlay escuro pra legibilidade quando há imagem de fundo */}
@@ -139,18 +142,18 @@ export default function CampaignMobilePage({
             <img
               src={branding.logoUrl}
               alt={branding.tenantName ?? "logo"}
-              className="w-20 h-20 object-contain rounded-full bg-white/10 p-2 mb-3"
+              className="w-32 h-32 sm:w-36 sm:h-36 object-contain rounded-full bg-white/10 mb-4 shadow-lg ring-2 ring-white/20"
             />
           ) : (
-            <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center text-2xl mb-3">
+            <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-full bg-white/10 flex items-center justify-center text-5xl mb-4 shadow-lg ring-2 ring-white/20">
               {branding.tenantName?.[0] ?? "🍴"}
             </div>
           )}
-          <h1 className="text-2xl font-bold drop-shadow-md">{branding.tenantName ?? "Premify"}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold drop-shadow-md">{branding.tenantName ?? "Premify"}</h1>
         </div>
 
         {/* Card da campanha */}
-        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 mb-5 border border-white/20">
+        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 mb-5 border border-white/20 text-center">
           <h2 className="text-lg font-semibold mb-1">{campaign.name}</h2>
           {campaign.description && (
             <p className="text-sm opacity-90">{campaign.description}</p>
@@ -159,14 +162,15 @@ export default function CampaignMobilePage({
 
         {preMechanicSlot}
 
-        {/* Mecânica visual */}
-        {wheel && (
+        {/* Mecânica visual — ocultada antes da autenticação */}
+        {!hideMechanic && wheel && (
           <div className="flex flex-col items-center mb-6">
             <WheelSVG
               key={demoSpinKey > 0 ? `demo-${demoSpinKey}` : "live"}
               prizes={prizes}
               size={300}
               theme={effectiveTheme}
+              centerLogoUrl={branding.logoUrl}
               winningPrizeIndex={demoMode ? demoWinningIndex : winningPrizeIndex}
               autoSpin={demoMode ? demoSpinKey > 0 : autoSpinOnMount}
               onSpinEnd={(p) => {
@@ -188,7 +192,7 @@ export default function CampaignMobilePage({
         )}
 
         {/* Sem roleta — mostra mecânicas em texto */}
-        {!wheel && (
+        {!hideMechanic && !wheel && (
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20">
             <p className="text-sm opacity-80 text-center">
               Essa campanha usa: {campaign.mechanics.map((m) => m.type).join(", ")}
@@ -196,9 +200,9 @@ export default function CampaignMobilePage({
           </div>
         )}
 
-        {bottomSlot && <div className="mt-auto pt-6">{bottomSlot}</div>}
+        {bottomSlot && <div className="pt-4">{bottomSlot}</div>}
 
-        <div className="mt-6 text-center text-xs opacity-60">
+        <div className="mt-auto pt-6 text-center text-xs opacity-60">
           Powered by <span className="font-semibold">Premify</span>
         </div>
       </div>
