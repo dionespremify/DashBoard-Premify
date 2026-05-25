@@ -1,0 +1,509 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
+import PageMeta from "../../components/common/PageMeta";
+import PageBreadcrumb from "../../components/common/PageBreadCrumb";
+import Button from "../../components/ui/button/Button";
+import Label from "../../components/form/Label";
+import Input from "../../components/form/input/InputField";
+import {
+  nextWizardStep,
+  startWizard,
+  type WizardAnswers,
+  type WizardDimensionQuestion,
+  type WizardRecommendation,
+  type WizardStepResponse,
+} from "../../api/wizard";
+import { createCampaign } from "../../api/campaigns";
+import { extractApiError } from "../../api/client";
+
+type Phase = "loading" | "question" | "recommendation" | "no_match" | "creating";
+
+export default function WizardPage() {
+  const navigate = useNavigate();
+
+  const [phase, setPhase] = useState<Phase>("loading");
+  const [step, setStep] = useState<WizardStepResponse | null>(null);
+  const [answers, setAnswers] = useState<WizardAnswers>({});
+  const [history, setHistory] = useState<WizardStepResponse[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  // dimensioning + metadata
+  const [dimensioning, setDimensioning] = useState<Record<string, unknown>>({});
+  const [campaignName, setCampaignName] = useState("");
+  const [startsAt, setStartsAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [endsAt, setEndsAt] = useState("");
+  const [activateImmediately, setActivateImmediately] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const first = await startWizard();
+        if (!active) return;
+        applyStep(first);
+      } catch (err) {
+        if (active) {
+          setError(extractApiError(err, "Erro ao iniciar o wizard"));
+          setPhase("no_match");
+        }
+      }
+    })();
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function applyStep(s: WizardStepResponse) {
+    setStep(s);
+    if (s.type === "question") {
+      setPhase("question");
+    } else if (s.type === "recommendation") {
+      setPhase("recommendation");
+      if (s.recommendation) {
+        setCampaignName(s.recommendation.label);
+        // Pré-popula defaults das dimension_questions
+        const defaults: Record<string, unknown> = {};
+        s.recommendation.dimensionQuestions.forEach((q) => {
+          if (q.default !== undefined && q.default !== null) defaults[q.key] = q.default;
+        });
+        setDimensioning(defaults);
+      }
+    } else {
+      setPhase("no_match");
+    }
+  }
+
+  async function answerQuestion(key: string) {
+    if (!step?.question) return;
+    const dimension = step.question.dimension;
+    const nextAnswers: WizardAnswers = { ...answers, [dimension]: key };
+    setAnswers(nextAnswers);
+    setHistory((h) => [...h, step]);
+    setPhase("loading");
+    try {
+      const next = await nextWizardStep(nextAnswers);
+      applyStep(next);
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao avançar wizard"));
+      setPhase("no_match");
+    }
+  }
+
+  function goBack() {
+    const last = history[history.length - 1];
+    if (!last) return;
+    // Remove a última resposta
+    if (last.question) {
+      const dim = last.question.dimension;
+      const { [dim]: _removed, ...rest } = answers;
+      void _removed;
+      setAnswers(rest);
+    }
+    setHistory((h) => h.slice(0, -1));
+    setStep(last);
+    setPhase(last.type === "question" ? "question" : "recommendation");
+    setError(null);
+  }
+
+  function restart() {
+    setAnswers({});
+    setHistory([]);
+    setStep(null);
+    setError(null);
+    setDimensioning({});
+    setCampaignName("");
+    setPhase("loading");
+    (async () => {
+      try {
+        const first = await startWizard();
+        applyStep(first);
+      } catch (err) {
+        setError(extractApiError(err, "Erro ao reiniciar"));
+        setPhase("no_match");
+      }
+    })();
+  }
+
+  async function handleCreate() {
+    if (!step?.recommendation) return;
+    if (!campaignName.trim()) {
+      setError("Dê um nome para a campanha");
+      return;
+    }
+    // Valida dimension_questions obrigatórias (sem valor)
+    const missing = step.recommendation.dimensionQuestions.find((q) => {
+      const v = dimensioning[q.key];
+      return v === undefined || v === null || v === "";
+    });
+    if (missing) {
+      setError(`Preencha o campo "${missing.label}"`);
+      return;
+    }
+
+    setPhase("creating");
+    setError(null);
+    try {
+      const created = await createCampaign({
+        blueprintCode: step.recommendation.blueprintCode,
+        name: campaignName.trim(),
+        startsAt: new Date(startsAt + "T00:00:00").toISOString(),
+        endsAt: endsAt ? new Date(endsAt + "T23:59:59").toISOString() : undefined,
+        wizardAnswers: answers,
+        dimensioning,
+        activateImmediately,
+      });
+      navigate(`/campanhas/${created.id}`, { replace: true });
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao criar campanha"));
+      setPhase("recommendation");
+    }
+  }
+
+  return (
+    <>
+      <PageMeta title="Nova campanha | Premify" description="Crie uma nova campanha guiada pelo wizard." />
+      <PageBreadcrumb pageTitle="Nova campanha" />
+
+      <div className="max-w-3xl mx-auto">
+        {phase === "loading" && (
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400">Carregando…</div>
+        )}
+
+        {phase === "question" && step?.question && (
+          <WizardQuestionView
+            question={step.question}
+            onAnswer={answerQuestion}
+            onBack={history.length > 0 ? goBack : undefined}
+            stepIndex={history.length + 1}
+          />
+        )}
+
+        {phase === "recommendation" && step?.recommendation && (
+          <WizardRecommendationView
+            recommendation={step.recommendation}
+            dimensioning={dimensioning}
+            onDimensioningChange={(key, value) => setDimensioning((d) => ({ ...d, [key]: value }))}
+            campaignName={campaignName}
+            onCampaignNameChange={setCampaignName}
+            startsAt={startsAt}
+            onStartsAtChange={setStartsAt}
+            endsAt={endsAt}
+            onEndsAtChange={setEndsAt}
+            activateImmediately={activateImmediately}
+            onActivateImmediatelyChange={setActivateImmediately}
+            onCreate={handleCreate}
+            onBack={history.length > 0 ? goBack : undefined}
+            onRestart={restart}
+            creating={false}
+          />
+        )}
+
+        {phase === "creating" && (
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400">Criando campanha…</div>
+        )}
+
+        {phase === "no_match" && (
+          <div className="p-8 text-center">
+            <p className="mb-4 text-gray-700 dark:text-gray-300">
+              {step?.message ?? error ?? "Algo deu errado."}
+            </p>
+            <Button onClick={restart}>Recomeçar</Button>
+          </div>
+        )}
+
+        {error && phase !== "no_match" && (
+          <div className="mt-4 p-3 text-sm rounded-lg bg-error-50 text-error-700 border border-error-200 dark:bg-error-500/10 dark:text-error-300 dark:border-error-500/30">
+            {error}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────
+// View: Pergunta do decision tree
+// ─────────────────────────────────────────────────
+function WizardQuestionView({
+  question,
+  onAnswer,
+  onBack,
+  stepIndex,
+}: {
+  question: NonNullable<WizardStepResponse["question"]>;
+  onAnswer: (key: string) => void;
+  onBack?: () => void;
+  stepIndex: number;
+}) {
+  return (
+    <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-brand-500 dark:text-brand-400">
+        Passo {stepIndex}
+      </div>
+      <h2 className="mb-2 text-xl font-semibold text-gray-800 dark:text-white/90 sm:text-2xl">
+        {question.questionText}
+      </h2>
+      {question.subtitle && (
+        <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">{question.subtitle}</p>
+      )}
+
+      <div className="grid gap-3 sm:grid-cols-1">
+        {question.options.map((opt) => (
+          <button
+            type="button"
+            key={opt.key}
+            onClick={() => onAnswer(opt.key)}
+            className="flex items-start gap-4 p-4 text-left transition border rounded-xl bg-white border-gray-200 hover:border-brand-400 hover:bg-brand-50/30 dark:bg-gray-900 dark:border-gray-700 dark:hover:border-brand-400 dark:hover:bg-brand-500/5"
+          >
+            {opt.icon && <span className="text-2xl shrink-0">{opt.icon}</span>}
+            <div className="flex-1">
+              <div className="font-medium text-gray-800 dark:text-white/90">{opt.label}</div>
+              {opt.description && (
+                <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">{opt.description}</div>
+              )}
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {onBack && (
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={onBack}
+            className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+          >
+            ← Voltar
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────
+// View: Recomendação + dimensionamento
+// ─────────────────────────────────────────────────
+function WizardRecommendationView({
+  recommendation,
+  dimensioning,
+  onDimensioningChange,
+  campaignName,
+  onCampaignNameChange,
+  startsAt,
+  onStartsAtChange,
+  endsAt,
+  onEndsAtChange,
+  activateImmediately,
+  onActivateImmediatelyChange,
+  onCreate,
+  onBack,
+  onRestart,
+  creating,
+}: {
+  recommendation: WizardRecommendation;
+  dimensioning: Record<string, unknown>;
+  onDimensioningChange: (key: string, value: unknown) => void;
+  campaignName: string;
+  onCampaignNameChange: (v: string) => void;
+  startsAt: string;
+  onStartsAtChange: (v: string) => void;
+  endsAt: string;
+  onEndsAtChange: (v: string) => void;
+  activateImmediately: boolean;
+  onActivateImmediatelyChange: (v: boolean) => void;
+  onCreate: () => void;
+  onBack?: () => void;
+  onRestart: () => void;
+  creating: boolean;
+}) {
+  return (
+    <div className="space-y-6">
+      {/* Card da recomendação */}
+      <div className="p-6 bg-gradient-to-br from-brand-50 to-white rounded-2xl border border-brand-200 dark:from-brand-500/10 dark:to-gray-800/50 dark:border-brand-500/30">
+        <div className="flex items-start gap-4">
+          {recommendation.icon && <span className="text-4xl">{recommendation.icon}</span>}
+          <div className="flex-1">
+            <div className="mb-1 text-xs font-medium uppercase tracking-wide text-brand-600 dark:text-brand-400">
+              Recomendação para o seu negócio
+            </div>
+            <h2 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
+              {recommendation.label}
+            </h2>
+            {recommendation.description && (
+              <p className="text-sm text-gray-600 dark:text-gray-300">{recommendation.description}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Dimensionamento */}
+      <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+        <h3 className="mb-4 text-lg font-medium text-gray-800 dark:text-white/90">
+          Configure os detalhes
+        </h3>
+
+        <div className="grid gap-4">
+          <div>
+            <Label>
+              Nome da campanha <span className="text-error-500">*</span>
+            </Label>
+            <Input
+              placeholder="ex: Cartão Fidelidade do Bar do Zé"
+              value={campaignName}
+              onChange={(e) => onCampaignNameChange(e.target.value)}
+            />
+          </div>
+
+          {recommendation.dimensionQuestions.map((q) => (
+            <DimensionInput
+              key={q.key}
+              question={q}
+              value={dimensioning[q.key]}
+              onChange={(v) => onDimensioningChange(q.key, v)}
+            />
+          ))}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label>Início da campanha</Label>
+              <Input type="date" value={startsAt} onChange={(e) => onStartsAtChange(e.target.value)} />
+            </div>
+            <div>
+              <Label>Fim (opcional)</Label>
+              <Input type="date" value={endsAt} onChange={(e) => onEndsAtChange(e.target.value)} />
+            </div>
+          </div>
+
+          <label className="inline-flex items-center gap-2 cursor-pointer mt-2">
+            <input
+              type="checkbox"
+              checked={activateImmediately}
+              onChange={(e) => onActivateImmediatelyChange(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-300">Ativar imediatamente após criar</span>
+          </label>
+        </div>
+      </div>
+
+      {/* Ações */}
+      <div className="flex items-center justify-between">
+        <div className="flex gap-3">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+            >
+              ← Voltar
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onRestart}
+            className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+          >
+            Recomeçar
+          </button>
+        </div>
+        <Button onClick={onCreate} disabled={creating}>
+          {creating ? "Criando…" : "Criar campanha"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────
+// Input dinâmico por tipo de pergunta
+// ─────────────────────────────────────────────────
+function DimensionInput({
+  question,
+  value,
+  onChange,
+}: {
+  question: WizardDimensionQuestion;
+  value: unknown;
+  onChange: (v: unknown) => void;
+}) {
+  const placeholder = question.placeholder ?? "";
+
+  if (question.type === "text") {
+    return (
+      <div>
+        <Label>{question.label}</Label>
+        <Input
+          placeholder={placeholder}
+          value={(value as string) ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      </div>
+    );
+  }
+
+  if (question.type === "date") {
+    return (
+      <div>
+        <Label>{question.label}</Label>
+        <Input
+          type="date"
+          value={(value as string) ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      </div>
+    );
+  }
+
+  if (question.type === "percent" || question.type === "int") {
+    const min = question.min !== undefined ? String(question.min) : undefined;
+    const max = question.max !== undefined ? String(question.max) : undefined;
+    return (
+      <div>
+        <Label>
+          {question.label}
+          {question.type === "percent" && <span className="text-gray-400 ml-1">(%)</span>}
+        </Label>
+        <Input
+          type="number"
+          min={min}
+          max={max}
+          value={(value as number)?.toString() ?? ""}
+          onChange={(e) => onChange(e.target.value ? parseInt(e.target.value, 10) : "")}
+        />
+      </div>
+    );
+  }
+
+  if (question.type === "money") {
+    // Aceita reais; ao salvar, o WizardPage não converte — quem submete já fala em centavos.
+    // Aqui mantemos centavos pra simplicidade (compatível com config_template).
+    return (
+      <div>
+        <Label>
+          {question.label} <span className="text-gray-400 ml-1">(em centavos)</span>
+        </Label>
+        <Input
+          type="number"
+          min="0"
+          placeholder={placeholder || "ex: 1500 = R$ 15,00"}
+          value={(value as number)?.toString() ?? ""}
+          onChange={(e) => onChange(e.target.value ? parseInt(e.target.value, 10) : "")}
+        />
+      </div>
+    );
+  }
+
+  // fallback
+  return (
+    <div>
+      <Label>{question.label}</Label>
+      <Input
+        placeholder={placeholder}
+        value={(value as string) ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
+}
