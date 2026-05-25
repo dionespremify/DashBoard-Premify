@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, Link } from "react-router";
 import PageMeta from "../../components/common/PageMeta";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import Button from "../../components/ui/button/Button";
@@ -15,6 +15,7 @@ import {
 } from "../../api/wizard";
 import { createCampaign } from "../../api/campaigns";
 import { extractApiError } from "../../api/client";
+import PrizePoolEditor, { type PrizeDefinition } from "../../components/prizes/PrizePoolEditor";
 
 type Phase = "loading" | "question" | "recommendation" | "no_match" | "creating";
 
@@ -134,6 +135,8 @@ export default function WizardPage() {
     // Valida dimension_questions obrigatórias (sem valor)
     const missing = step.recommendation.dimensionQuestions.find((q) => {
       const v = dimensioning[q.key];
+      if (q.type === "boolean") return false; // false é resposta válida
+      if (q.type === "prize_pool") return !Array.isArray(v) || v.length === 0;
       return v === undefined || v === null || v === "";
     });
     if (missing) {
@@ -204,12 +207,10 @@ export default function WizardPage() {
         )}
 
         {phase === "no_match" && (
-          <div className="p-8 text-center">
-            <p className="mb-4 text-gray-700 dark:text-gray-300">
-              {step?.message ?? error ?? "Algo deu errado."}
-            </p>
-            <Button onClick={restart}>Recomeçar</Button>
-          </div>
+          <WizardNoMatchView
+            message={step?.message ?? error ?? "Algo deu errado."}
+            onRetry={restart}
+          />
         )}
 
         {error && phase !== "no_match" && (
@@ -362,6 +363,7 @@ function WizardRecommendationView({
               question={q}
               value={dimensioning[q.key]}
               onChange={(v) => onDimensioningChange(q.key, v)}
+              siblings={dimensioning}
             />
           ))}
 
@@ -405,7 +407,7 @@ function WizardRecommendationView({
             onClick={onRestart}
             className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
           >
-            Recomeçar
+            Refazer wizard
           </button>
         </div>
         <Button onClick={onCreate} disabled={creating}>
@@ -423,12 +425,84 @@ function DimensionInput({
   question,
   value,
   onChange,
+  siblings,
 }: {
   question: WizardDimensionQuestion;
   value: unknown;
   onChange: (v: unknown) => void;
+  siblings?: Record<string, unknown>;
 }) {
   const placeholder = question.placeholder ?? "";
+
+  if (question.type === "prize_pool") {
+    return (
+      <div>
+        <Label>{question.label}</Label>
+        <PrizePoolEditor
+          value={(value as PrizeDefinition[]) ?? []}
+          onChange={(next) => onChange(next)}
+          everyoneWins={(siblings?.everyone_wins as boolean) ?? true}
+        />
+      </div>
+    );
+  }
+
+  if (question.type === "boolean") {
+    const checked = value === true || value === "true";
+    return (
+      <div>
+        <Label>{question.label}</Label>
+        <label className="flex items-center gap-3 p-3 border rounded-lg border-gray-200 dark:border-gray-700 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={(e) => onChange(e.target.checked)}
+            className="w-4 h-4 rounded text-brand-500 focus:ring-brand-500"
+          />
+          <span className="text-sm text-gray-700 dark:text-gray-300">
+            {checked ? "Sim" : "Não"} {placeholder && `— ${placeholder}`}
+          </span>
+        </label>
+      </div>
+    );
+  }
+
+  if (question.type === "select") {
+    const options = question.options ?? [];
+    const current = (value as string) ?? "";
+    return (
+      <div>
+        <Label>{question.label}</Label>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {options.map((opt) => {
+            const selected = current === opt.value;
+            return (
+              <button
+                type="button"
+                key={opt.value}
+                onClick={() => onChange(opt.value)}
+                className={`p-3 text-left rounded-lg border transition ${
+                  selected
+                    ? "bg-brand-50 border-brand-500 dark:bg-brand-500/10 dark:border-brand-400"
+                    : "bg-white border-gray-200 hover:border-gray-300 dark:bg-gray-900 dark:border-gray-700"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  {opt.icon && <span className="text-lg">{opt.icon}</span>}
+                  <span className="font-medium text-sm text-gray-800 dark:text-white/90">
+                    {opt.label}
+                  </span>
+                </div>
+                {opt.description && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{opt.description}</p>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   if (question.type === "text") {
     return (
@@ -504,6 +578,43 @@ function DimensionInput({
         value={(value as string) ?? ""}
         onChange={(e) => onChange(e.target.value)}
       />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────
+// View: estado de erro / sem match
+// Decide a ação certa baseado no motivo do erro.
+// ─────────────────────────────────────────────────
+function WizardNoMatchView({ message, onRetry }: { message: string; onRetry: () => void }) {
+  const lower = message.toLowerCase();
+  const needsOnboarding = lower.includes("onboarding");
+
+  return (
+    <div className="p-8 text-center bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+      <div className="mb-4 text-4xl">{needsOnboarding ? "📋" : "⚠️"}</div>
+      <h2 className="mb-2 text-lg font-medium text-gray-800 dark:text-white/90">
+        {needsOnboarding ? "Falta completar o perfil do seu negócio" : "Não foi possível iniciar o wizard"}
+      </h2>
+      <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">{message}</p>
+
+      <div className="flex items-center justify-center gap-3">
+        {needsOnboarding ? (
+          <Link to="/onboarding">
+            <Button>Concluir onboarding</Button>
+          </Link>
+        ) : (
+          <Button onClick={onRetry}>Tentar novamente</Button>
+        )}
+        <Link to="/campanhas">
+          <button
+            type="button"
+            className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+          >
+            Voltar para campanhas
+          </button>
+        </Link>
+      </div>
     </div>
   );
 }

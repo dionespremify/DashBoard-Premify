@@ -23,6 +23,8 @@ import OnboardingPage from "./pages/Onboarding/OnboardingPage";
 import CampaignsList from "./pages/Campaigns/CampaignsList";
 import WizardPage from "./pages/Campaigns/WizardPage";
 import CampaignDetail from "./pages/Campaigns/CampaignDetail";
+import BrandingPage from "./pages/Branding/BrandingPage";
+import PublicCampaignPage from "./pages/Public/PublicCampaignPage";
 
 export default function App() {
   return (
@@ -33,6 +35,9 @@ export default function App() {
           {/* Auth (públicas) */}
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
+
+          {/* Cliente final (mobile, sem auth, sem sidebar) */}
+          <Route path="/p/:slug/c/:campaignId" element={<PublicCampaignPage />} />
 
           {/* Onboarding (protegida, fora do layout do dashboard) */}
           <Route
@@ -59,6 +64,7 @@ export default function App() {
             <Route path="/campanhas" element={<CampaignsList />} />
             <Route path="/campanhas/nova" element={<WizardPage />} />
             <Route path="/campanhas/:id" element={<CampaignDetail />} />
+            <Route path="/personalizacao" element={<BrandingPage />} />
 
             {/* Páginas-demo do template (mantidas como referência) */}
             <Route path="/calendar" element={<Calendar />} />

@@ -26,11 +26,12 @@ export interface WizardMechanicPreview {
 export interface WizardDimensionQuestion {
   key: string;
   label: string;
-  type: string; // "int" | "percent" | "money" | "text" | "date" | "weekday-picker"
+  type: string; // "int" | "percent" | "money" | "text" | "date" | "boolean" | "prize_pool" | "select"
   default?: unknown;
   min?: unknown;
   max?: unknown;
   placeholder?: string;
+  options?: { value: string; label: string; icon?: string; description?: string }[];
 }
 
 export interface WizardRecommendation {

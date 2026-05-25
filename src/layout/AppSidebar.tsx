@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router";
 
 // Assume these icons are imported from an icon library
 import {
+  BoxCubeIcon,
   CalenderIcon,
   ChevronDownIcon,
   GridIcon,
@@ -33,6 +34,11 @@ const navItems: NavItem[] = [
       { name: "Todas as campanhas", path: "/campanhas", pro: false },
       { name: "Criar nova", path: "/campanhas/nova", pro: false, new: true },
     ],
+  },
+  {
+    icon: <BoxCubeIcon />,
+    name: "Personalização",
+    path: "/personalizacao",
   },
   {
     icon: <UserCircleIcon />,

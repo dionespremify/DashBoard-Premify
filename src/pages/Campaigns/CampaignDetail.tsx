@@ -4,7 +4,12 @@ import PageMeta from "../../components/common/PageMeta";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import Button from "../../components/ui/button/Button";
 import { getCampaign, updateCampaignStatus, type Campaign } from "../../api/campaigns";
+import { getBranding, type Branding } from "../../api/branding";
 import { extractApiError } from "../../api/client";
+import CampaignMobilePage, {
+  type CampaignBranding,
+  type CampaignDisplay,
+} from "../../components/gamification/CampaignMobilePage";
 
 const STATUS_LABEL: Record<string, { label: string; className: string }> = {
   draft: { label: "Rascunho", className: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300" },
@@ -25,17 +30,24 @@ const MECHANIC_LABEL: Record<string, string> = {
 export default function CampaignDetail() {
   const { id } = useParams<{ id: string }>();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [branding, setBranding] = useState<Branding | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     let active = true;
     (async () => {
       if (!id) return;
       try {
-        const data = await getCampaign(parseInt(id, 10));
-        if (active) setCampaign(data);
+        const [data, b] = await Promise.all([
+          getCampaign(parseInt(id, 10)),
+          getBranding().catch(() => null),
+        ]);
+        if (!active) return;
+        setCampaign(data);
+        if (b) setBranding(b);
       } catch (err) {
         if (active) setError(extractApiError(err, "Erro ao carregar campanha"));
       } finally {
@@ -119,6 +131,9 @@ export default function CampaignDetail() {
             </div>
 
             <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => setShowPreview(true)} disabled={updating}>
+                👁 Pré-visualizar
+              </Button>
               {campaign.status === "draft" && (
                 <Button onClick={() => changeStatus("active")} disabled={updating}>
                   Ativar
@@ -154,6 +169,21 @@ export default function CampaignDetail() {
           </div>
         )}
 
+        {/* Link público (QR code futuro) */}
+        {branding && (
+          <div className="p-4 bg-blue-50 rounded-2xl border border-blue-200 dark:bg-blue-500/10 dark:border-blue-500/30 text-sm">
+            <p className="text-gray-700 dark:text-gray-200 mb-1">
+              <span className="font-semibold">Link público da campanha:</span>
+            </p>
+            <code className="block text-xs bg-white dark:bg-gray-900 p-2 rounded font-mono break-all">
+              {window.location.origin}/p/{branding.tenantSlug}/c/{campaign.id}
+            </code>
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              Compartilhe esse link com seus clientes (ou gere um QR code dele).
+            </p>
+          </div>
+        )}
+
         {/* Mecânicas */}
         <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
           <h2 className="mb-4 text-lg font-medium text-gray-800 dark:text-white/90">
@@ -186,6 +216,69 @@ export default function CampaignDetail() {
           </div>
         </div>
       </div>
+
+      {/* Modal de preview */}
+      {showPreview && (
+        <CampaignPreviewModal
+          campaign={campaign}
+          branding={branding}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
     </>
+  );
+}
+
+// ─────────────────────────────────────────────────
+function CampaignPreviewModal({
+  campaign,
+  branding,
+  onClose,
+}: {
+  campaign: Campaign;
+  branding: Branding | null;
+  onClose: () => void;
+}) {
+  const previewBranding: CampaignBranding = {
+    tenantSlug: branding?.tenantSlug,
+    tenantName: branding?.tenantName ?? "Seu negócio",
+    logoUrl: branding?.logoUrl,
+    backgroundColor: branding?.backgroundColor ?? "#1a1a2e",
+    backgroundImageUrl: branding?.backgroundImageUrl,
+    buttonColor: branding?.buttonColor ?? "#FF6B35",
+  };
+
+  const display: CampaignDisplay = {
+    id: campaign.id,
+    name: campaign.name,
+    description: campaign.description,
+    status: campaign.status,
+    mechanics: campaign.mechanics.map((m) => ({
+      type: m.type,
+      config: m.config as CampaignDisplay["mechanics"][number]["config"],
+    })),
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-gray-900 rounded-3xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: "min(380px, 100%)" }}
+      >
+        <div className="flex items-center justify-between p-3 bg-gray-800 text-white">
+          <p className="text-sm font-medium">Preview do cliente final</p>
+          <button onClick={onClose} className="text-xl hover:opacity-80">
+            ✕
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto">
+          <CampaignMobilePage branding={previewBranding} campaign={display} interactive={false} />
+        </div>
+      </div>
+    </div>
   );
 }
