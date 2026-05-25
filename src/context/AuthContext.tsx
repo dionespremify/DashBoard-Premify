@@ -9,6 +9,7 @@ export interface AuthUser {
   name: string;
   email: string;
   role: string;
+  avatarUrl?: string | null;
   tenantId: number;
   tenantSlug: string;
   tenantName: string;
@@ -23,6 +24,7 @@ interface AuthContextValue {
   isLoading: boolean;
   signIn: (response: AuthResponse) => void;
   signOut: () => void;
+  updateUser: (patch: Partial<AuthUser>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -76,6 +78,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateUser = useCallback((patch: Partial<AuthUser>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -84,8 +95,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       signIn,
       signOut,
+      updateUser,
     }),
-    [user, token, isLoading, signIn, signOut],
+    [user, token, isLoading, signIn, signOut, updateUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

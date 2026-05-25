@@ -25,6 +25,7 @@ import WizardPage from "./pages/Campaigns/WizardPage";
 import CampaignDetail from "./pages/Campaigns/CampaignDetail";
 import EditCampaignPage from "./pages/Campaigns/EditCampaignPage";
 import BrandingPage from "./pages/Branding/BrandingPage";
+import AccountPage from "./pages/AccountPage";
 import PublicCampaignPage from "./pages/Public/PublicCampaignPage";
 
 export default function App() {
@@ -67,6 +68,7 @@ export default function App() {
             <Route path="/campanhas/:id" element={<CampaignDetail />} />
             <Route path="/campanhas/:id/editar" element={<EditCampaignPage />} />
             <Route path="/personalizacao" element={<BrandingPage />} />
+            <Route path="/conta" element={<AccountPage />} />
 
             {/* Páginas-demo do template (mantidas como referência) */}
             <Route path="/calendar" element={<Calendar />} />
