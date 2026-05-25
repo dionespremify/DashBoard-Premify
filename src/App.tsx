@@ -23,6 +23,7 @@ import OnboardingPage from "./pages/Onboarding/OnboardingPage";
 import CampaignsList from "./pages/Campaigns/CampaignsList";
 import WizardPage from "./pages/Campaigns/WizardPage";
 import CampaignDetail from "./pages/Campaigns/CampaignDetail";
+import EditCampaignPage from "./pages/Campaigns/EditCampaignPage";
 import BrandingPage from "./pages/Branding/BrandingPage";
 import PublicCampaignPage from "./pages/Public/PublicCampaignPage";
 
@@ -64,6 +65,7 @@ export default function App() {
             <Route path="/campanhas" element={<CampaignsList />} />
             <Route path="/campanhas/nova" element={<WizardPage />} />
             <Route path="/campanhas/:id" element={<CampaignDetail />} />
+            <Route path="/campanhas/:id/editar" element={<EditCampaignPage />} />
             <Route path="/personalizacao" element={<BrandingPage />} />
 
             {/* Páginas-demo do template (mantidas como referência) */}

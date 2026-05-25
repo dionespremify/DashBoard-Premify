@@ -13,9 +13,16 @@ import {
   type WizardRecommendation,
   type WizardStepResponse,
 } from "../../api/wizard";
-import { createCampaign } from "../../api/campaigns";
+import { createCampaign, DEFAULT_CUSTOMER_FORM, type CustomerFormField } from "../../api/campaigns";
 import { extractApiError } from "../../api/client";
 import PrizePoolEditor, { type PrizeDefinition } from "../../components/prizes/PrizePoolEditor";
+import Tabs from "../../components/common/Tabs";
+import CustomerFormConfigEditor from "../../components/campaigns/CustomerFormConfigEditor";
+import CampaignMobilePage, {
+  type CampaignBranding,
+  type CampaignDisplay,
+} from "../../components/gamification/CampaignMobilePage";
+import { getBranding, type Branding } from "../../api/branding";
 
 type Phase = "loading" | "question" | "recommendation" | "no_match" | "creating";
 
@@ -34,6 +41,13 @@ export default function WizardPage() {
   const [startsAt, setStartsAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [endsAt, setEndsAt] = useState("");
   const [activateImmediately, setActivateImmediately] = useState(true);
+  const [customerFormConfig, setCustomerFormConfig] = useState<CustomerFormField[]>(DEFAULT_CUSTOMER_FORM);
+
+  // branding pro preview
+  const [branding, setBranding] = useState<Branding | null>(null);
+  useEffect(() => {
+    getBranding().then(setBranding).catch(() => setBranding(null));
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -154,6 +168,7 @@ export default function WizardPage() {
         endsAt: endsAt ? new Date(endsAt + "T23:59:59").toISOString() : undefined,
         wizardAnswers: answers,
         dimensioning,
+        customerFormConfig,
         activateImmediately,
       });
       navigate(`/campanhas/${created.id}`, { replace: true });
@@ -183,22 +198,65 @@ export default function WizardPage() {
         )}
 
         {phase === "recommendation" && step?.recommendation && (
-          <WizardRecommendationView
-            recommendation={step.recommendation}
-            dimensioning={dimensioning}
-            onDimensioningChange={(key, value) => setDimensioning((d) => ({ ...d, [key]: value }))}
-            campaignName={campaignName}
-            onCampaignNameChange={setCampaignName}
-            startsAt={startsAt}
-            onStartsAtChange={setStartsAt}
-            endsAt={endsAt}
-            onEndsAtChange={setEndsAt}
-            activateImmediately={activateImmediately}
-            onActivateImmediatelyChange={setActivateImmediately}
-            onCreate={handleCreate}
-            onBack={history.length > 0 ? goBack : undefined}
-            onRestart={restart}
-            creating={false}
+          <Tabs
+            tabs={[
+              {
+                key: "config",
+                label: "Configuração",
+                icon: "⚙️",
+                content: (
+                  <WizardRecommendationView
+                    recommendation={step.recommendation}
+                    dimensioning={dimensioning}
+                    onDimensioningChange={(key, value) => setDimensioning((d) => ({ ...d, [key]: value }))}
+                    campaignName={campaignName}
+                    onCampaignNameChange={setCampaignName}
+                    startsAt={startsAt}
+                    onStartsAtChange={setStartsAt}
+                    endsAt={endsAt}
+                    onEndsAtChange={setEndsAt}
+                    activateImmediately={activateImmediately}
+                    onActivateImmediatelyChange={setActivateImmediately}
+                    onCreate={handleCreate}
+                    onBack={history.length > 0 ? goBack : undefined}
+                    onRestart={restart}
+                    creating={false}
+                  />
+                ),
+              },
+              {
+                key: "form",
+                label: "Cadastro do cliente",
+                icon: "📝",
+                content: (
+                  <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+                    <h2 className="mb-1 text-lg font-medium text-gray-800 dark:text-white/90">
+                      Campos do formulário de participação
+                    </h2>
+                    <p className="mb-5 text-sm text-gray-500 dark:text-gray-400">
+                      Defina quais dados o cliente vai preencher pra entrar nessa campanha.
+                    </p>
+                    <CustomerFormConfigEditor
+                      value={customerFormConfig}
+                      onChange={setCustomerFormConfig}
+                    />
+                  </div>
+                ),
+              },
+              {
+                key: "preview",
+                label: "Preview",
+                icon: "👁",
+                content: (
+                  <WizardPreviewPanel
+                    recommendation={step.recommendation}
+                    dimensioning={dimensioning}
+                    campaignName={campaignName}
+                    branding={branding}
+                  />
+                ),
+              },
+            ]}
           />
         )}
 
@@ -578,6 +636,54 @@ function DimensionInput({
         value={(value as string) ?? ""}
         onChange={(e) => onChange(e.target.value)}
       />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────
+// Preview da campanha (frame de celular com CampaignMobilePage)
+// Renderiza o que está em dimensioning como se a campanha já existisse.
+// ─────────────────────────────────────────────────
+function WizardPreviewPanel({
+  recommendation,
+  dimensioning,
+  campaignName,
+  branding,
+}: {
+  recommendation: { mechanics: { type: string }[]; label: string; description?: string | null };
+  dimensioning: Record<string, unknown>;
+  campaignName: string;
+  branding: Branding | null;
+}) {
+  const previewBranding: CampaignBranding = {
+    tenantSlug: branding?.tenantSlug,
+    tenantName: branding?.tenantName ?? "Seu negócio",
+    logoUrl: branding?.logoUrl,
+    backgroundColor: branding?.backgroundColor ?? "#1a1a2e",
+    backgroundImageUrl: branding?.backgroundImageUrl,
+    buttonColor: branding?.buttonColor ?? "#FF6B35",
+    wheelTheme: branding?.wheelTheme ?? "vegas",
+  };
+
+  const display: CampaignDisplay = {
+    name: campaignName || recommendation.label,
+    description: recommendation.description,
+    mechanics: recommendation.mechanics.map((m) => ({
+      type: m.type,
+      config: dimensioning as CampaignDisplay["mechanics"][number]["config"],
+    })),
+  };
+
+  return (
+    <div className="flex justify-center py-2">
+      <div
+        className="overflow-hidden rounded-[2.5rem] border-[10px] border-gray-800 dark:border-gray-700 shadow-2xl bg-black"
+        style={{ aspectRatio: "9/16", maxHeight: "75vh", width: "min(380px, 100%)" }}
+      >
+        <div className="w-full h-full overflow-auto">
+          <CampaignMobilePage branding={previewBranding} campaign={display} interactive={false} demoMode />
+        </div>
+      </div>
     </div>
   );
 }

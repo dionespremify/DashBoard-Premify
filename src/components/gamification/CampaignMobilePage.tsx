@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import WheelSVG, { type WheelTheme } from "./WheelSVG";
+import CelebrationModal from "./CelebrationModal";
 import type { PrizeDefinition } from "../prizes/PrizePoolEditor";
 
 export interface CampaignBranding {
@@ -9,6 +10,7 @@ export interface CampaignBranding {
   backgroundColor?: string | null;
   backgroundImageUrl?: string | null;
   buttonColor?: string | null;
+  wheelTheme?: WheelTheme | null;
 }
 
 export interface CampaignMechanicData {
@@ -53,6 +55,12 @@ interface Props {
   ctaLabel?: string;
   /** Click do botão (em modo interativo) */
   onCtaClick?: () => void;
+  /** Código do prêmio (Reward.code) pra mostrar no modal de celebração */
+  rewardCode?: string;
+  /** Caminho do som de celebração */
+  celebrationSoundUrl?: string;
+  /** Modo demo (preview no painel): habilita o botão e gira a roleta com prêmio aleatório */
+  demoMode?: boolean;
 }
 
 export default function CampaignMobilePage({
@@ -68,20 +76,38 @@ export default function CampaignMobilePage({
   ctaLabel = "Girar a roleta!",
   onCtaClick,
   wheelTheme,
+  rewardCode,
+  celebrationSoundUrl,
+  demoMode = false,
 }: Props) {
   const wheel = campaign.mechanics.find((m) => m.type === "wheel");
   const prizes = useMemo(
     () => (wheel?.config?.prizes ?? []) as PrizeDefinition[],
     [wheel],
   );
-  const effectiveTheme: WheelTheme = wheelTheme ?? (wheel?.config?.theme as WheelTheme) ?? "classic";
+  // Prioridade: prop wheelTheme > branding.wheelTheme > config legacy da mecânica > classic
+  const effectiveTheme: WheelTheme =
+    wheelTheme ?? branding.wheelTheme ?? (wheel?.config?.theme as WheelTheme | undefined) ?? "classic";
 
   const [revealed, setRevealed] = useState<PrizeDefinition | null>(null);
+
+  // Estado do modo demo: gira a roleta com prêmio aleatório quando staff clica
+  const [demoSpinKey, setDemoSpinKey] = useState(0);
+  const [demoWinningIndex, setDemoWinningIndex] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     // Reset reveal quando muda o prêmio determinado
     setRevealed(null);
   }, [winningPrizeIndex]);
+
+  function startDemoSpin() {
+    const visible = prizes.filter((p) => p.type !== "try_again");
+    if (visible.length === 0) return;
+    const idx = Math.floor(Math.random() * visible.length);
+    setRevealed(null);
+    setDemoWinningIndex(idx);
+    setDemoSpinKey((k) => k + 1);
+  }
 
   const buttonColor = branding.buttonColor || "#FF6B35";
   const bgColor = branding.backgroundColor || "#1a1a2e";
@@ -137,38 +163,27 @@ export default function CampaignMobilePage({
         {wheel && (
           <div className="flex flex-col items-center mb-6">
             <WheelSVG
+              key={demoSpinKey > 0 ? `demo-${demoSpinKey}` : "live"}
               prizes={prizes}
               size={300}
               theme={effectiveTheme}
-              winningPrizeIndex={winningPrizeIndex}
-              autoSpin={autoSpinOnMount}
+              winningPrizeIndex={demoMode ? demoWinningIndex : winningPrizeIndex}
+              autoSpin={demoMode ? demoSpinKey > 0 : autoSpinOnMount}
               onSpinEnd={(p) => {
                 setRevealed(p);
                 onSpinEnd?.(p);
               }}
             />
 
-            {revealed && (
-              <div className="mt-5 bg-white text-gray-900 rounded-2xl p-5 text-center shadow-xl animate-bounce-in w-full">
-                <div className="text-4xl mb-1">{revealed.icon ?? "🎉"}</div>
-                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                  Parabéns! Você ganhou:
-                </div>
-                <div className="text-xl font-bold mt-1">{revealed.label}</div>
-              </div>
-            )}
-
-            {!revealed && (
-              <button
-                type="button"
-                onClick={interactive ? onCtaClick : undefined}
-                disabled={!interactive && !autoSpinOnMount}
-                className="mt-5 px-8 py-4 rounded-full font-bold text-base shadow-lg hover:scale-105 active:scale-95 transition-transform disabled:opacity-70 disabled:cursor-not-allowed"
-                style={{ backgroundColor: buttonColor, color: "white" }}
-              >
-                {ctaLabel}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={demoMode ? startDemoSpin : interactive ? onCtaClick : undefined}
+              disabled={!demoMode && !interactive && !autoSpinOnMount}
+              className="mt-5 px-8 py-4 rounded-full font-bold text-base shadow-lg hover:scale-105 active:scale-95 transition-transform disabled:opacity-70 disabled:cursor-not-allowed"
+              style={{ backgroundColor: buttonColor, color: "white" }}
+            >
+              {ctaLabel}
+            </button>
           </div>
         )}
 
@@ -187,6 +202,17 @@ export default function CampaignMobilePage({
           Powered by <span className="font-semibold">Premify</span>
         </div>
       </div>
+
+      {/* Modal celebratório quando a roleta para */}
+      {revealed && (
+        <CelebrationModal
+          prize={revealed}
+          rewardCode={rewardCode}
+          buttonColor={buttonColor}
+          soundUrl={celebrationSoundUrl}
+          onClose={() => setRevealed(null)}
+        />
+      )}
     </div>
   );
 }

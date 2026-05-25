@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, type ChangeEvent } from "react";
-import { readAndResizeImage } from "../../utils/imageUpload";
+import { uploadImage } from "../../api/uploads";
+import { extractApiError } from "../../api/client";
 
 export interface PrizeQuota {
   limit: number;
@@ -316,10 +317,10 @@ function ImageUploadField({
     setError(null);
     setUploading(true);
     try {
-      const dataUrl = await readAndResizeImage(file, 256, 0.85);
-      onChange(dataUrl);
+      const res = await uploadImage(file, "prizes");
+      onChange(res.url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao processar imagem");
+      setError(extractApiError(err, "Erro ao enviar imagem"));
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";

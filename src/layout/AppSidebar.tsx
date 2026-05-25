@@ -4,12 +4,10 @@ import { Link, useLocation } from "react-router";
 // Assume these icons are imported from an icon library
 import {
   BoxCubeIcon,
-  CalenderIcon,
   ChevronDownIcon,
   GridIcon,
   HorizontaLDots,
   PieChartIcon,
-  UserCircleIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
@@ -40,26 +38,9 @@ const navItems: NavItem[] = [
     name: "Personalização",
     path: "/personalizacao",
   },
-  {
-    icon: <UserCircleIcon />,
-    name: "Meu perfil",
-    path: "/profile",
-  },
 ];
 
-const othersItems: NavItem[] = [
-  {
-    icon: <CalenderIcon />,
-    name: "Componentes do template",
-    subItems: [
-      { name: "Calendar", path: "/calendar", pro: false },
-      { name: "Tables", path: "/basic-tables", pro: false },
-      { name: "Forms", path: "/form-elements", pro: false },
-      { name: "Charts", path: "/line-chart", pro: false },
-      { name: "Buttons", path: "/buttons", pro: false },
-    ],
-  },
-];
+const othersItems: NavItem[] = [];
 
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();

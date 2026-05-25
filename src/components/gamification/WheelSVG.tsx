@@ -13,6 +13,8 @@ interface WheelSVGProps {
   size?: number;
   /** Tema visual */
   theme?: WheelTheme;
+  /** Logo do tenant pra exibir no centro da roleta */
+  centerLogoUrl?: string | null;
   /** Disparado quando a animação termina */
   onSpinEnd?: (prize: PrizeDefinition) => void;
 }
@@ -32,6 +34,7 @@ export default function WheelSVG({
   autoSpin = false,
   size = 320,
   theme = "classic",
+  centerLogoUrl,
   onSpinEnd,
 }: WheelSVGProps) {
   const [rotation, setRotation] = useState(0);
@@ -39,17 +42,35 @@ export default function WheelSVG({
   const wheelRef = useRef<SVGGElement>(null);
   const animationStartedRef = useRef(false);
 
-  // Filtra prêmios visíveis e expande pelas fatias (slicesCount)
+  // Filtra prêmios visíveis e distribui as fatias INTERCALADAS (round-robin)
+  // assim 2 fatias do mesmo prêmio não ficam grudadas — vira "AABCABC" em vez de "AAABBC".
   const slices: ExpandedSlice[] = useMemo(() => {
     const visible = prizes.filter((p) => p.type !== "try_again");
+    if (visible.length === 0) return [];
+
+    const pool = visible.map((prize, prizeIndex) => ({
+      prize,
+      prizeIndex,
+      color: prize.color || DEFAULT_COLORS[prizeIndex % DEFAULT_COLORS.length],
+      remaining: Math.max(1, prize.slices ?? 1),
+    }));
+
     const out: ExpandedSlice[] = [];
-    visible.forEach((prize, prizeIndex) => {
-      const count = Math.max(1, prize.slices ?? 1);
-      const color = prize.color || DEFAULT_COLORS[prizeIndex % DEFAULT_COLORS.length];
-      for (let i = 0; i < count; i++) {
-        out.push({ prize, prizeIndex, sliceIndex: out.length, color });
+    // Round-robin: a cada passagem pega 1 fatia de cada prêmio que ainda tem cota.
+    let safety = 1000; // evita loop infinito em algum cenário inesperado
+    while (pool.some((p) => p.remaining > 0) && safety-- > 0) {
+      for (const item of pool) {
+        if (item.remaining > 0) {
+          out.push({
+            prize: item.prize,
+            prizeIndex: item.prizeIndex,
+            sliceIndex: out.length,
+            color: item.color,
+          });
+          item.remaining--;
+        }
       }
-    });
+    }
     return out;
   }, [prizes]);
 
@@ -184,9 +205,8 @@ export default function WheelSVG({
             const tx = center + textRadius * Math.cos((midAngle * Math.PI) / 180);
             const ty = center + textRadius * Math.sin((midAngle * Math.PI) / 180);
 
-            // Imagem (se existir)
-            const imgSize = Math.max(28, size * 0.11);
-            const labelOffsetY = slice.prize.imageUrl ? imgSize / 2 + 8 : 0;
+            // Sem texto na roleta — só imagem/ícone (maiores e centralizados)
+            const imgSize = Math.max(40, size * 0.16);
 
             return (
               <g key={`slice-${i}`}>
@@ -202,24 +222,12 @@ export default function WheelSVG({
                     <image
                       href={slice.prize.imageUrl}
                       x={tx - imgSize / 2}
-                      y={ty - imgSize / 2 - 4}
+                      y={ty - imgSize / 2}
                       width={imgSize}
                       height={imgSize}
                       preserveAspectRatio="xMidYMid slice"
                       clipPath={`circle(${imgSize / 2}px at ${imgSize / 2}px ${imgSize / 2}px)`}
                     />
-                    <text
-                      x={tx}
-                      y={ty + labelOffsetY}
-                      textAnchor="middle"
-                      style={{
-                        fontSize: Math.max(9, size * 0.028),
-                        fontWeight: 700,
-                        fill: themeStyle.textColor,
-                      }}
-                    >
-                      {truncate(slice.prize.label, 12)}
-                    </text>
                   </g>
                 ) : (
                   <text
@@ -230,17 +238,10 @@ export default function WheelSVG({
                     transform={`rotate(${midAngle + 90} ${tx} ${ty})`}
                     className="select-none pointer-events-none"
                     style={{
-                      fontSize: Math.max(11, size * 0.04),
-                      fontWeight: 700,
-                      fill: themeStyle.textColor,
+                      fontSize: size * 0.085,
                     }}
                   >
-                    <tspan x={tx} dy="-0.2em" style={{ fontSize: size * 0.06 }}>
-                      {slice.prize.icon ?? "🎁"}
-                    </tspan>
-                    <tspan x={tx} dy="1.4em" style={{ fontSize: Math.max(9, size * 0.032) }}>
-                      {truncate(slice.prize.label, 14)}
-                    </tspan>
+                    {slice.prize.icon ?? "🎁"}
                   </text>
                 )}
               </g>
@@ -248,21 +249,40 @@ export default function WheelSVG({
           })}
         </g>
 
-        {/* Círculo central */}
+        {/* Círculo central + logo (se houver) */}
+        <defs>
+          <clipPath id={`center-logo-clip-${theme}`}>
+            <circle cx={center} cy={center} r={size * 0.085} />
+          </clipPath>
+        </defs>
+
         <circle
           cx={center}
           cy={center}
-          r={size * 0.09}
+          r={size * 0.11}
           fill={themeStyle.centerFill}
           stroke={themeStyle.centerStroke}
           strokeWidth={3}
         />
-        <circle
-          cx={center}
-          cy={center}
-          r={size * 0.04}
-          fill={themeStyle.centerDot}
-        />
+
+        {centerLogoUrl ? (
+          <image
+            href={centerLogoUrl}
+            x={center - size * 0.085}
+            y={center - size * 0.085}
+            width={size * 0.17}
+            height={size * 0.17}
+            preserveAspectRatio="xMidYMid slice"
+            clipPath={`url(#center-logo-clip-${theme})`}
+          />
+        ) : (
+          <circle
+            cx={center}
+            cy={center}
+            r={size * 0.04}
+            fill={themeStyle.centerDot}
+          />
+        )}
       </svg>
 
       {/* Ponteiro */}
@@ -372,6 +392,3 @@ function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
   return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
 }
 
-function truncate(s: string, max: number): string {
-  return s.length > max ? s.slice(0, max - 1) + "…" : s;
-}

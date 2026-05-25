@@ -1,5 +1,7 @@
 import { apiClient } from "./client";
 
+export type WheelTheme = "classic" | "vegas" | "neon";
+
 export interface Branding {
   tenantSlug: string;
   tenantName: string;
@@ -7,6 +9,7 @@ export interface Branding {
   backgroundColor?: string | null;
   backgroundImageUrl?: string | null;
   buttonColor?: string | null;
+  wheelTheme?: WheelTheme | null;
 }
 
 export interface UpdateBrandingRequest {
@@ -14,6 +17,7 @@ export interface UpdateBrandingRequest {
   backgroundColor?: string | null;
   backgroundImageUrl?: string | null;
   buttonColor?: string | null;
+  wheelTheme?: WheelTheme | null;
 }
 
 export async function getBranding(): Promise<Branding> {

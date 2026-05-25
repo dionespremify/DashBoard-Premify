@@ -1,9 +1,14 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { useEffect, useState, type MouseEvent } from "react";
+import { Link, useNavigate } from "react-router";
 import PageMeta from "../../components/common/PageMeta";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import Button from "../../components/ui/button/Button";
-import { listCampaigns, type Campaign } from "../../api/campaigns";
+import {
+  deleteCampaign,
+  listCampaigns,
+  updateCampaignStatus,
+  type Campaign,
+} from "../../api/campaigns";
 import { extractApiError } from "../../api/client";
 
 const STATUS_LABEL: Record<string, { label: string; className: string }> = {
@@ -14,26 +19,71 @@ const STATUS_LABEL: Record<string, { label: string; className: string }> = {
 };
 
 export default function CampaignsList() {
+  const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actingId, setActingId] = useState<number | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<Campaign | null>(null);
 
   useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const list = await listCampaigns();
-        if (active) setCampaigns(list);
-      } catch (err) {
-        if (active) setError(extractApiError(err, "Erro ao carregar campanhas"));
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
+    refresh();
   }, []);
+
+  async function refresh() {
+    setLoading(true);
+    setError(null);
+    try {
+      const list = await listCampaigns();
+      setCampaigns(list);
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao carregar campanhas"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function changeStatus(c: Campaign, newStatus: string, e: MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setActingId(c.id);
+    setError(null);
+    try {
+      const updated = await updateCampaignStatus(c.id, newStatus);
+      setCampaigns((prev) => prev.map((p) => (p.id === c.id ? updated : p)));
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao atualizar status"));
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  function goEdit(c: Campaign, e: MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(`/campanhas/${c.id}/editar`);
+  }
+
+  function askDelete(c: Campaign, e: MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setConfirmDelete(c);
+  }
+
+  async function performDelete() {
+    if (!confirmDelete) return;
+    setActingId(confirmDelete.id);
+    setError(null);
+    try {
+      await deleteCampaign(confirmDelete.id);
+      setCampaigns((prev) => prev.filter((p) => p.id !== confirmDelete.id));
+      setConfirmDelete(null);
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao excluir"));
+    } finally {
+      setActingId(null);
+    }
+  }
 
   return (
     <>
@@ -76,14 +126,15 @@ export default function CampaignsList() {
               label: c.status,
               className: "bg-gray-100 text-gray-700",
             };
+            const isActing = actingId === c.id;
+
             return (
-              <Link
-                to={`/campanhas/${c.id}`}
+              <div
                 key={c.id}
-                className="block p-4 transition bg-white rounded-xl shadow-sm hover:shadow-md dark:bg-gray-800/50 dark:border dark:border-gray-700 dark:hover:border-gray-600"
+                className="p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition dark:bg-gray-800/50 dark:border dark:border-gray-700 dark:hover:border-gray-600"
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
+                  <Link to={`/campanhas/${c.id}`} className="flex-1 min-w-0 cursor-pointer">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="text-base font-medium text-gray-800 dark:text-white/90 truncate">
                         {c.name}
@@ -106,13 +157,130 @@ export default function CampaignsList() {
                         </span>
                       )}
                     </div>
+                  </Link>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <ActionButton
+                      title="Editar"
+                      onClick={(e) => goEdit(c, e)}
+                      disabled={isActing}
+                    >
+                      ✏️
+                    </ActionButton>
+
+                    {c.status === "active" && (
+                      <ActionButton
+                        title="Pausar"
+                        onClick={(e) => changeStatus(c, "paused", e)}
+                        disabled={isActing}
+                      >
+                        ⏸
+                      </ActionButton>
+                    )}
+
+                    {(c.status === "paused" || c.status === "draft") && (
+                      <ActionButton
+                        title="Ativar"
+                        onClick={(e) => changeStatus(c, "active", e)}
+                        disabled={isActing}
+                      >
+                        ▶️
+                      </ActionButton>
+                    )}
+
+                    {(c.status === "active" || c.status === "paused") && (
+                      <ActionButton
+                        title="Encerrar"
+                        onClick={(e) => changeStatus(c, "ended", e)}
+                        disabled={isActing}
+                      >
+                        🔒
+                      </ActionButton>
+                    )}
+
+                    <ActionButton
+                      title="Excluir"
+                      onClick={(e) => askDelete(c, e)}
+                      disabled={isActing}
+                      danger
+                    >
+                      🗑️
+                    </ActionButton>
                   </div>
                 </div>
-              </Link>
+              </div>
             );
           })}
         </div>
       )}
+
+      {/* Modal de confirmação de exclusão */}
+      {confirmDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setConfirmDelete(null)}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-3xl mb-3">⚠️</div>
+            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-white/90">
+              Excluir "{confirmDelete.name}"?
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              Essa ação apaga a campanha, todas as participações e prêmios gerados. Não tem como desfazer.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(null)}
+                className="px-4 h-10 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={performDelete}
+                disabled={actingId !== null}
+                className="px-4 h-10 text-sm font-medium text-white bg-error-500 hover:bg-error-600 rounded-lg disabled:opacity-50"
+              >
+                {actingId !== null ? "Excluindo…" : "Excluir definitivamente"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
+  );
+}
+
+function ActionButton({
+  children,
+  title,
+  onClick,
+  disabled,
+  danger,
+}: {
+  children: React.ReactNode;
+  title: string;
+  onClick: (e: MouseEvent) => void;
+  disabled?: boolean;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      disabled={disabled}
+      className={`w-9 h-9 rounded-lg text-base flex items-center justify-center transition disabled:opacity-40 disabled:cursor-not-allowed ${
+        danger
+          ? "hover:bg-error-50 dark:hover:bg-error-500/10"
+          : "hover:bg-gray-100 dark:hover:bg-gray-700"
+      }`}
+    >
+      {children}
+    </button>
   );
 }

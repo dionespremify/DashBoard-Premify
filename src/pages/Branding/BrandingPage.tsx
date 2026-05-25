@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import PageMeta from "../../components/common/PageMeta";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import Button from "../../components/ui/button/Button";
@@ -8,9 +8,16 @@ import CampaignMobilePage, {
   type CampaignBranding,
   type CampaignDisplay,
 } from "../../components/gamification/CampaignMobilePage";
-import { getBranding, updateBranding, type Branding } from "../../api/branding";
+import { getBranding, updateBranding, type Branding, type WheelTheme } from "../../api/branding";
 import { extractApiError } from "../../api/client";
 import { listCampaigns, type Campaign } from "../../api/campaigns";
+import { uploadImage } from "../../api/uploads";
+
+const THEME_OPTIONS: { value: WheelTheme; label: string; icon: string; description: string }[] = [
+  { value: "classic", label: "Clássico", icon: "⚪", description: "Simples e elegante" },
+  { value: "vegas", label: "Las Vegas", icon: "🎰", description: "Com luzes piscando, estilo cassino" },
+  { value: "neon", label: "Neon", icon: "💜", description: "Visual futurista com glow" },
+];
 
 const DEMO_CAMPAIGN: CampaignDisplay = {
   name: "Roleta da Sorte (demo)",
@@ -42,6 +49,7 @@ export default function BrandingPage() {
   const [backgroundColor, setBackgroundColor] = useState("#1a1a2e");
   const [backgroundImageUrl, setBackgroundImageUrl] = useState("");
   const [buttonColor, setButtonColor] = useState("#FF6B35");
+  const [wheelTheme, setWheelTheme] = useState<WheelTheme>("vegas");
 
   // Pega 1 campanha real (se houver) pra preview, senão demo
   const [previewCampaign, setPreviewCampaign] = useState<CampaignDisplay>(DEMO_CAMPAIGN);
@@ -57,6 +65,7 @@ export default function BrandingPage() {
         if (b.backgroundColor) setBackgroundColor(b.backgroundColor);
         if (b.backgroundImageUrl) setBackgroundImageUrl(b.backgroundImageUrl);
         if (b.buttonColor) setButtonColor(b.buttonColor);
+        if (b.wheelTheme) setWheelTheme(b.wheelTheme);
       } catch (err) {
         if (active) setError(extractApiError(err, "Erro ao carregar branding"));
       } finally {
@@ -100,6 +109,7 @@ export default function BrandingPage() {
         backgroundColor: backgroundColor || null,
         backgroundImageUrl: backgroundImageUrl || null,
         buttonColor: buttonColor || null,
+        wheelTheme,
       });
       setBrandingState(b);
       setSuccess("Personalização salva! Suas campanhas já refletem essas mudanças.");
@@ -118,6 +128,7 @@ export default function BrandingPage() {
     backgroundColor,
     backgroundImageUrl: backgroundImageUrl || null,
     buttonColor,
+    wheelTheme,
   };
 
   if (loading) {
@@ -140,18 +151,16 @@ export default function BrandingPage() {
           <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
             <h2 className="mb-4 text-lg font-medium text-gray-800 dark:text-white/90">Marca</h2>
 
-            <div className="grid gap-4">
-              <div>
-                <Label>URL do logo</Label>
-                <Input
-                  placeholder="https://exemplo.com/logo.png"
-                  value={logoUrl}
-                  onChange={(e) => setLogoUrl(e.target.value)}
-                />
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Use uma imagem quadrada (PNG/JPG, ~300×300px). Sugestão: hospede em imgur, cloudinary, ou seu próprio servidor.
-                </p>
-              </div>
+            <div>
+              <Label>Logo do estabelecimento</Label>
+              <BrandingImageUpload
+                value={logoUrl}
+                onChange={setLogoUrl}
+                maxDim={300}
+                hint="Imagem quadrada (PNG ou JPG). Recomendado ~300×300px."
+                buttonLabel="📷 Enviar logo"
+                aspectClass="w-32 h-32"
+              />
             </div>
           </div>
 
@@ -191,15 +200,46 @@ export default function BrandingPage() {
             <h2 className="mb-4 text-lg font-medium text-gray-800 dark:text-white/90">Imagem de fundo (opcional)</h2>
 
             <div>
-              <Label>URL da imagem de fundo</Label>
-              <Input
-                placeholder="https://exemplo.com/background.jpg"
+              <Label>Imagem de fundo da página do cliente</Label>
+              <BrandingImageUpload
                 value={backgroundImageUrl}
-                onChange={(e) => setBackgroundImageUrl(e.target.value)}
+                onChange={setBackgroundImageUrl}
+                maxDim={1024}
+                hint="Imagem retrato (mais alta que larga). Sobreposição escura é aplicada automaticamente pra legibilidade."
+                buttonLabel="🖼 Enviar imagem de fundo"
+                aspectClass="w-full aspect-[9/16] max-h-72"
               />
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Sobreposição escura é aplicada automaticamente pra texto ficar legível.
-              </p>
+            </div>
+          </div>
+
+          <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+            <h2 className="mb-1 text-lg font-medium text-gray-800 dark:text-white/90">Estilo da roleta</h2>
+            <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
+              Aplicado a todas as suas campanhas de roleta.
+            </p>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              {THEME_OPTIONS.map((t) => {
+                const selected = wheelTheme === t.value;
+                return (
+                  <button
+                    type="button"
+                    key={t.value}
+                    onClick={() => setWheelTheme(t.value)}
+                    className={`p-4 text-left rounded-xl border transition ${
+                      selected
+                        ? "bg-brand-50 border-brand-500 dark:bg-brand-500/10 dark:border-brand-400"
+                        : "bg-white border-gray-200 hover:border-gray-300 dark:bg-gray-900 dark:border-gray-700"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-2xl">{t.icon}</span>
+                      <span className="font-medium text-sm text-gray-800 dark:text-white/90">{t.label}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.description}</p>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -230,6 +270,7 @@ export default function BrandingPage() {
                 branding={previewBranding}
                 campaign={previewCampaign}
                 interactive={false}
+                demoMode
               />
             </div>
           </div>
@@ -253,4 +294,96 @@ function toDisplay(c: Campaign): CampaignDisplay {
       config: m.config as CampaignDisplay["mechanics"][number]["config"],
     })),
   };
+}
+
+// ─────────────────────────────────────────────────
+// Componente de upload de imagem do branding
+// Envia o arquivo pro servidor (não armazena base64).
+// ─────────────────────────────────────────────────
+function BrandingImageUpload({
+  value,
+  onChange,
+  hint,
+  buttonLabel,
+}: {
+  value: string;
+  onChange: (url: string) => void;
+  maxDim?: number;
+  hint?: string;
+  buttonLabel: string;
+  aspectClass?: string;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    setUploading(true);
+    try {
+      const res = await uploadImage(file, "branding");
+      onChange(res.url);
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao enviar imagem"));
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  return (
+    <div>
+      {value ? (
+        <div className="flex items-center gap-4 p-3 border border-gray-200 rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+          <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-900 shrink-0 border border-gray-300 dark:border-gray-700">
+            <img src={value} alt="" className="w-full h-full object-cover" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+              ✓ Imagem salva no servidor
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="px-3 h-9 text-xs text-brand-600 hover:text-brand-700 border border-brand-300 rounded disabled:opacity-50"
+              >
+                {uploading ? "Enviando…" : "Trocar"}
+              </button>
+              <button
+                type="button"
+                onClick={() => onChange("")}
+                className="px-3 h-9 text-xs text-error-500 hover:text-error-700 border border-error-300 rounded"
+              >
+                Remover
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="w-full p-6 text-sm font-medium text-brand-600 bg-brand-50 rounded-xl border-2 border-dashed border-brand-300 hover:bg-brand-100 dark:bg-brand-500/10 dark:border-brand-500/40 dark:text-brand-300 dark:hover:bg-brand-500/20 disabled:opacity-50"
+        >
+          {uploading ? "Enviando arquivo…" : buttonLabel}
+        </button>
+      )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFile}
+        className="hidden"
+      />
+
+      {hint && <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{hint}</p>}
+      {error && <p className="mt-2 text-xs text-error-500">{error}</p>}
+    </div>
+  );
 }

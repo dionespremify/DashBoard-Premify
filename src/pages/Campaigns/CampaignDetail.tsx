@@ -1,15 +1,21 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router";
+import { useNavigate, useParams, Link } from "react-router";
 import PageMeta from "../../components/common/PageMeta";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import Button from "../../components/ui/button/Button";
-import { getCampaign, updateCampaignStatus, type Campaign } from "../../api/campaigns";
+import {
+  deleteCampaign,
+  getCampaign,
+  updateCampaignStatus,
+  type Campaign,
+} from "../../api/campaigns";
 import { getBranding, type Branding } from "../../api/branding";
 import { extractApiError } from "../../api/client";
 import CampaignMobilePage, {
   type CampaignBranding,
   type CampaignDisplay,
 } from "../../components/gamification/CampaignMobilePage";
+import QRCodeCard from "../../components/campaigns/QRCodeCard";
 
 const STATUS_LABEL: Record<string, { label: string; className: string }> = {
   draft: { label: "Rascunho", className: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300" },
@@ -29,12 +35,14 @@ const MECHANIC_LABEL: Record<string, string> = {
 
 export default function CampaignDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [branding, setBranding] = useState<Branding | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -70,6 +78,20 @@ export default function CampaignDetail() {
       setError(extractApiError(err, "Erro ao atualizar status"));
     } finally {
       setUpdating(false);
+    }
+  }
+
+  async function performDelete() {
+    if (!campaign) return;
+    setUpdating(true);
+    setError(null);
+    try {
+      await deleteCampaign(campaign.id);
+      navigate("/campanhas", { replace: true });
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao excluir"));
+      setUpdating(false);
+      setConfirmDelete(false);
     }
   }
 
@@ -134,6 +156,9 @@ export default function CampaignDetail() {
               <Button variant="outline" onClick={() => setShowPreview(true)} disabled={updating}>
                 👁 Pré-visualizar
               </Button>
+              <Button variant="outline" onClick={() => navigate(`/campanhas/${campaign.id}/editar`)} disabled={updating}>
+                ✏️ Editar
+              </Button>
               {campaign.status === "draft" && (
                 <Button onClick={() => changeStatus("active")} disabled={updating}>
                   Ativar
@@ -159,6 +184,14 @@ export default function CampaignDetail() {
                   </Button>
                 </>
               )}
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                disabled={updating}
+                className="px-4 h-11 text-sm font-medium text-error-600 hover:bg-error-50 dark:hover:bg-error-500/10 rounded-lg border border-error-300 disabled:opacity-40"
+              >
+                🗑️ Excluir
+              </button>
             </div>
           </div>
         </div>
@@ -169,19 +202,14 @@ export default function CampaignDetail() {
           </div>
         )}
 
-        {/* Link público (QR code futuro) */}
+        {/* QR Code da campanha */}
         {branding && (
-          <div className="p-4 bg-blue-50 rounded-2xl border border-blue-200 dark:bg-blue-500/10 dark:border-blue-500/30 text-sm">
-            <p className="text-gray-700 dark:text-gray-200 mb-1">
-              <span className="font-semibold">Link público da campanha:</span>
-            </p>
-            <code className="block text-xs bg-white dark:bg-gray-900 p-2 rounded font-mono break-all">
-              {window.location.origin}/p/{branding.tenantSlug}/c/{campaign.id}
-            </code>
-            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              Compartilhe esse link com seus clientes (ou gere um QR code dele).
-            </p>
-          </div>
+          <QRCodeCard
+            url={`${window.location.origin}/p/${branding.tenantSlug}/c/${campaign.id}`}
+            tenantName={branding.tenantName}
+            campaignName={campaign.name}
+            fgColor={branding.buttonColor ?? "#111827"}
+          />
         )}
 
         {/* Mecânicas */}
@@ -225,6 +253,45 @@ export default function CampaignDetail() {
           onClose={() => setShowPreview(false)}
         />
       )}
+
+      {/* Modal de confirmação de exclusão */}
+      {confirmDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => !updating && setConfirmDelete(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-3xl mb-3">⚠️</div>
+            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-white/90">
+              Excluir "{campaign.name}"?
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              Essa ação apaga a campanha, todas as participações e prêmios. Não tem como desfazer.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(false)}
+                disabled={updating}
+                className="px-4 h-10 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={performDelete}
+                disabled={updating}
+                className="px-4 h-10 text-sm font-medium text-white bg-error-500 hover:bg-error-600 rounded-lg disabled:opacity-50"
+              >
+                {updating ? "Excluindo…" : "Excluir definitivamente"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -246,6 +313,7 @@ function CampaignPreviewModal({
     backgroundColor: branding?.backgroundColor ?? "#1a1a2e",
     backgroundImageUrl: branding?.backgroundImageUrl,
     buttonColor: branding?.buttonColor ?? "#FF6B35",
+    wheelTheme: branding?.wheelTheme ?? "vegas",
   };
 
   const display: CampaignDisplay = {

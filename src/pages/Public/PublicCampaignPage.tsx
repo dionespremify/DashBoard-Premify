@@ -11,6 +11,8 @@ import {
   getPublicCampaign,
   joinPublicCampaign,
   registerPublicCustomer,
+  requestLoginCode,
+  verifyLoginCode,
   type PublicCampaign,
   type PublicReward,
 } from "../../api/publicApi";
@@ -18,6 +20,8 @@ import { extractApiError } from "../../api/client";
 import PageMeta from "../../components/common/PageMeta";
 
 const PHONE_STORAGE_KEY = "premify_customer_phone";
+
+type AuthPhase = "choose" | "register" | "login_email" | "login_code";
 
 export default function PublicCampaignPage() {
   const { slug, campaignId: campaignIdParam } = useParams<{ slug: string; campaignId: string }>();
@@ -28,9 +32,15 @@ export default function PublicCampaignPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [phone, setPhone] = useState(() => localStorage.getItem(PHONE_STORAGE_KEY) ?? "");
-  const [name, setName] = useState("");
+  const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [registered, setRegistered] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Auth state machine
+  const [authPhase, setAuthPhase] = useState<AuthPhase>("choose");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginCode, setLoginCode] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
 
   const [rewards, setRewards] = useState<PublicReward[]>([]);
   const [revealingReward, setRevealingReward] = useState<PublicReward | null>(null);
@@ -72,12 +82,72 @@ export default function PublicCampaignPage() {
     }
   }
 
+  async function handleRequestCode(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (submitting || !slug) return;
+    if (!loginEmail.trim()) {
+      setError("Digite seu email");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      await requestLoginCode(slug, loginEmail.trim());
+      setCodeSent(true);
+      setAuthPhase("login_code");
+    } catch (err) {
+      setError(extractApiError(err, "Não foi possível enviar o código"));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleVerifyCode(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (submitting || !slug) return;
+    if (!loginCode.trim()) {
+      setError("Digite o código que recebeu por email");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const result = await verifyLoginCode(slug, loginEmail.trim(), loginCode.trim());
+      try {
+        await joinPublicCampaign({ tenantSlug: slug, phone: result.phone, campaignId });
+      } catch {
+        /* ignora se já participou ou se campanha não tá ativa */
+      }
+      localStorage.setItem(PHONE_STORAGE_KEY, result.phone);
+      setPhone(result.phone);
+      setRegistered(true);
+    } catch (err) {
+      setError(extractApiError(err, "Código inválido ou expirado"));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   async function handleRegister(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (submitting || !slug) return;
-    if (!phone.trim()) {
+
+    const fields = campaign?.customerFormConfig ?? [];
+
+    // Valida campos obrigatórios
+    const phoneValue = (formValues.phone ?? phone).trim();
+    if (!phoneValue) {
       setError("Digite seu telefone");
       return;
+    }
+    for (const f of fields) {
+      if (!f.enabled || !f.required) continue;
+      if (f.key === "phone") continue;
+      const v = (formValues[f.key] ?? "").trim();
+      if (!v) {
+        setError(`Preencha o campo "${f.key}"`);
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -85,15 +155,21 @@ export default function PublicCampaignPage() {
     try {
       await registerPublicCustomer({
         tenantSlug: slug,
-        phone: phone.trim(),
-        name: name.trim() || undefined,
+        phone: phoneValue,
+        name: formValues.name?.trim() || undefined,
+        email: formValues.email?.trim() || undefined,
+        birthdate: formValues.birthdate?.trim() || undefined,
+        gender: formValues.gender?.trim() || undefined,
+        cpfCnpj: formValues.cpf_cnpj?.trim() || undefined,
+        address: formValues.address?.trim() || undefined,
       });
       try {
-        await joinPublicCampaign({ tenantSlug: slug, phone: phone.trim(), campaignId });
+        await joinPublicCampaign({ tenantSlug: slug, phone: phoneValue, campaignId });
       } catch {
         // ignora "campanha não ativa" — usuário ainda pode ver rewards anteriores
       }
-      localStorage.setItem(PHONE_STORAGE_KEY, phone.trim());
+      localStorage.setItem(PHONE_STORAGE_KEY, phoneValue);
+      setPhone(phoneValue);
       setRegistered(true);
     } catch (err) {
       setError(extractApiError(err, "Erro ao cadastrar"));
@@ -124,6 +200,7 @@ export default function PublicCampaignPage() {
       backgroundColor: campaign.tenant.backgroundColor,
       backgroundImageUrl: campaign.tenant.backgroundImageUrl,
       buttonColor: campaign.tenant.buttonColor,
+      wheelTheme: campaign.tenant.wheelTheme,
     };
   }, [campaign]);
 
@@ -156,33 +233,133 @@ export default function PublicCampaignPage() {
   const pendingReward = rewards.find((r) => r.status === "pending");
 
   // Slot abaixo do wheel
+  const formFields = (campaign?.customerFormConfig ?? []).filter((f) => f.enabled);
+  const buttonColor = branding.buttonColor || "#FF6B35";
+
   const bottomSlot = !registered ? (
-    <form onSubmit={handleRegister} className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20 space-y-3">
-      <p className="text-sm font-medium text-center">Cadastre-se pra participar</p>
-      <input
-        type="tel"
-        placeholder="Seu telefone (somente números)"
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-        className="w-full h-11 px-4 rounded-lg bg-white/90 text-gray-900 placeholder:text-gray-500"
-      />
-      <input
-        type="text"
-        placeholder="Seu nome (opcional)"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        className="w-full h-11 px-4 rounded-lg bg-white/90 text-gray-900 placeholder:text-gray-500"
-      />
-      {error && <p className="text-sm text-red-200">{error}</p>}
-      <button
-        type="submit"
-        disabled={submitting}
-        className="w-full h-11 rounded-lg font-semibold disabled:opacity-50"
-        style={{ backgroundColor: branding.buttonColor || "#FF6B35", color: "white" }}
-      >
-        {submitting ? "Cadastrando…" : "Participar"}
-      </button>
-    </form>
+    authPhase === "choose" ? (
+      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20 space-y-3">
+        <p className="text-sm font-medium text-center mb-3">Pra participar, escolha:</p>
+        <button
+          type="button"
+          onClick={() => { setError(null); setAuthPhase("register"); }}
+          className="w-full h-12 rounded-lg font-semibold shadow"
+          style={{ backgroundColor: buttonColor, color: "white" }}
+        >
+          ✨ Criar cadastro
+        </button>
+        <button
+          type="button"
+          onClick={() => { setError(null); setAuthPhase("login_email"); }}
+          className="w-full h-12 rounded-lg font-semibold bg-white/20 border border-white/40 text-white hover:bg-white/30"
+        >
+          🔑 Já tenho cadastro
+        </button>
+      </div>
+    ) : authPhase === "register" ? (
+      <form onSubmit={handleRegister} className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20 space-y-3">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-sm font-medium">Cadastre-se pra participar</p>
+          <button
+            type="button"
+            onClick={() => { setError(null); setAuthPhase("choose"); }}
+            className="text-xs underline opacity-80 hover:opacity-100"
+          >
+            ← Voltar
+          </button>
+        </div>
+        {formFields.map((f) => (
+          <DynamicFormField
+            key={f.key}
+            fieldKey={f.key}
+            required={f.required}
+            value={f.key === "phone" ? (formValues.phone ?? phone) : (formValues[f.key] ?? "")}
+            onChange={(v) => {
+              setFormValues((prev) => ({ ...prev, [f.key]: v }));
+              if (f.key === "phone") setPhone(v);
+            }}
+          />
+        ))}
+        {error && <p className="text-sm text-red-200">{error}</p>}
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full h-11 rounded-lg font-semibold disabled:opacity-50"
+          style={{ backgroundColor: buttonColor, color: "white" }}
+        >
+          {submitting ? "Cadastrando…" : "Participar"}
+        </button>
+      </form>
+    ) : authPhase === "login_email" ? (
+      <form onSubmit={handleRequestCode} className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20 space-y-3">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-sm font-medium">Entre com seu email</p>
+          <button
+            type="button"
+            onClick={() => { setError(null); setAuthPhase("choose"); }}
+            className="text-xs underline opacity-80 hover:opacity-100"
+          >
+            ← Voltar
+          </button>
+        </div>
+        <p className="text-xs opacity-80">Vamos te enviar um código de 6 dígitos no seu email.</p>
+        <input
+          type="email"
+          placeholder="seu@email.com"
+          value={loginEmail}
+          onChange={(e) => setLoginEmail(e.target.value)}
+          className="w-full h-11 px-4 rounded-lg bg-white/90 text-gray-900 placeholder:text-gray-500"
+          autoFocus
+        />
+        {error && <p className="text-sm text-red-200">{error}</p>}
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full h-11 rounded-lg font-semibold disabled:opacity-50"
+          style={{ backgroundColor: buttonColor, color: "white" }}
+        >
+          {submitting ? "Enviando…" : "Enviar código"}
+        </button>
+      </form>
+    ) : (
+      <form onSubmit={handleVerifyCode} className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20 space-y-3">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-sm font-medium">Digite o código</p>
+          <button
+            type="button"
+            onClick={() => { setError(null); setLoginCode(""); setAuthPhase("login_email"); }}
+            className="text-xs underline opacity-80 hover:opacity-100"
+          >
+            ← Trocar email
+          </button>
+        </div>
+        {codeSent && (
+          <p className="text-xs opacity-80">
+            Enviamos um código de 6 dígitos para <span className="font-semibold">{loginEmail}</span>. Válido por 5 minutos.
+          </p>
+        )}
+        <input
+          type="text"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={6}
+          placeholder="000000"
+          value={loginCode}
+          onChange={(e) => setLoginCode(e.target.value.replace(/\D/g, ""))}
+          className="w-full h-14 px-4 rounded-lg bg-white/90 text-gray-900 placeholder:text-gray-400 text-2xl text-center font-mono tracking-[0.5em]"
+          autoFocus
+        />
+        {error && <p className="text-sm text-red-200">{error}</p>}
+        <button
+          type="submit"
+          disabled={submitting || loginCode.length < 4}
+          className="w-full h-11 rounded-lg font-semibold disabled:opacity-50"
+          style={{ backgroundColor: buttonColor, color: "white" }}
+        >
+          {submitting ? "Validando…" : "Validar e entrar"}
+        </button>
+      </form>
+    )
   ) : pendingReward && !revealingReward ? (
     <div className="bg-yellow-400/20 backdrop-blur-md border border-yellow-300/40 rounded-2xl p-5 text-center">
       <div className="text-3xl mb-2">🎁</div>
@@ -204,7 +381,7 @@ export default function PublicCampaignPage() {
     </div>
   ) : (
     <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20 text-center">
-      <p className="text-sm">Você está participando! Faça uma compra para girar a roleta 🎡</p>
+      <p className="text-sm">Volte em breve! Novos prêmios aparecem aqui 🎁</p>
     </div>
   );
 
@@ -218,6 +395,7 @@ export default function PublicCampaignPage() {
           interactive={false}
           autoSpinOnMount={revealingReward !== null}
           winningPrizeIndex={winningIndex}
+          rewardCode={revealingReward?.code}
           bottomSlot={bottomSlot}
         />
       </div>
@@ -230,5 +408,72 @@ function FullScreenMessage({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-900 text-white p-6 text-center">
       {children}
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────
+// Campo dinâmico baseado na config do tenant
+// ─────────────────────────────────────────────────
+const FIELD_META: Record<string, { label: string; placeholder: string; type: string }> = {
+  phone: { label: "Telefone", placeholder: "Seu telefone", type: "tel" },
+  name: { label: "Nome", placeholder: "Seu nome", type: "text" },
+  email: { label: "Email", placeholder: "seu@email.com", type: "email" },
+  birthdate: { label: "Data de nascimento", placeholder: "", type: "date" },
+  gender: { label: "Gênero", placeholder: "", type: "select" },
+  cpf_cnpj: { label: "CPF / CNPJ", placeholder: "Somente números", type: "text" },
+  address: { label: "Endereço", placeholder: "Rua, número, bairro, cidade", type: "textarea" },
+};
+
+function DynamicFormField({
+  fieldKey,
+  required,
+  value,
+  onChange,
+}: {
+  fieldKey: string;
+  required: boolean;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const meta = FIELD_META[fieldKey] ?? { label: fieldKey, placeholder: "", type: "text" };
+  const placeholder = `${meta.placeholder}${required ? "" : " (opcional)"}`;
+  const baseClass = "w-full px-4 rounded-lg bg-white/90 text-gray-900 placeholder:text-gray-500";
+
+  if (meta.type === "select" && fieldKey === "gender") {
+    return (
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`h-11 ${baseClass}`}
+      >
+        <option value="">{required ? "Selecione o gênero" : "Gênero (opcional)"}</option>
+        <option value="female">Feminino</option>
+        <option value="male">Masculino</option>
+        <option value="other">Outro</option>
+        <option value="prefer_not_say">Prefiro não dizer</option>
+      </select>
+    );
+  }
+
+  if (meta.type === "textarea") {
+    return (
+      <textarea
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={2}
+        className={`py-2 ${baseClass} resize-none`}
+      />
+    );
+  }
+
+  return (
+    <input
+      type={meta.type}
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={`h-11 ${baseClass}`}
+    />
   );
 }

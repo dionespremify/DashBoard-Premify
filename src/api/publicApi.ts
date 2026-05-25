@@ -19,7 +19,9 @@ export interface PublicCampaign {
     backgroundColor?: string | null;
     backgroundImageUrl?: string | null;
     buttonColor?: string | null;
+    wheelTheme?: "classic" | "vegas" | "neon" | null;
   };
+  customerFormConfig?: { key: string; enabled: boolean; required: boolean }[];
 }
 
 export interface PublicRegisterRequest {
@@ -27,6 +29,10 @@ export interface PublicRegisterRequest {
   phone: string;
   name?: string;
   email?: string;
+  birthdate?: string;
+  gender?: string;
+  cpfCnpj?: string;
+  address?: string;
   optInMarketing?: boolean;
 }
 
@@ -72,6 +78,22 @@ export async function joinPublicCampaign(payload: PublicJoinRequest) {
 
 export async function getCustomerRewards(tenantSlug: string, phone: string): Promise<PublicReward[]> {
   const { data } = await apiClient.get<PublicReward[]>(`/public/${tenantSlug}/customers/${phone}/rewards`);
+  return data;
+}
+
+export async function requestLoginCode(tenantSlug: string, email: string): Promise<void> {
+  await apiClient.post(`/public/auth/request-code`, { tenantSlug, email });
+}
+
+export interface VerifyCodeResponse {
+  id: number;
+  phone: string;
+  name?: string | null;
+  email?: string | null;
+}
+
+export async function verifyLoginCode(tenantSlug: string, email: string, code: string): Promise<VerifyCodeResponse> {
+  const { data } = await apiClient.post<VerifyCodeResponse>(`/public/auth/verify-code`, { tenantSlug, email, code });
   return data;
 }
 
