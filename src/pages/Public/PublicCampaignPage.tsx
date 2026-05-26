@@ -22,6 +22,14 @@ import { submitSurvey } from "../../api/surveys";
 import SurveyForm from "../../components/gamification/SurveyForm";
 import { extractApiError } from "../../api/client";
 import PageMeta from "../../components/common/PageMeta";
+import {
+  isValidCpfCnpj,
+  isValidEmail,
+  isValidPhoneBR,
+  maskCpfCnpj,
+  maskPhoneBR,
+  onlyDigits,
+} from "../../utils/masks";
 
 const PHONE_STORAGE_KEY = "premify_customer_phone";
 
@@ -182,18 +190,21 @@ export default function PublicCampaignPage() {
 
     const fields = campaign?.customerFormConfig ?? [];
 
-    // Valida campos obrigatórios
+    // Valida campos obrigatórios + formato dos que têm padrão
     const phoneValue = (formValues.phone ?? phone).trim();
-    if (!phoneValue) {
-      setError("Digite seu telefone");
+    const phoneErr = validateField("phone", phoneValue, true);
+    if (phoneErr) {
+      setError(phoneErr === "Campo obrigatório" ? "Digite seu telefone" : phoneErr);
       return;
     }
     for (const f of fields) {
-      if (!f.enabled || !f.required) continue;
+      if (!f.enabled) continue;
       if (f.key === "phone") continue;
       const v = (formValues[f.key] ?? "").trim();
-      if (!v) {
-        setError(`Preencha o campo "${f.key}"`);
+      const err = validateField(f.key, v, f.required);
+      if (err) {
+        const labelMeta = FIELD_META[f.key]?.label ?? f.key;
+        setError(`${labelMeta}: ${err}`);
         return;
       }
     }
@@ -205,12 +216,12 @@ export default function PublicCampaignPage() {
 
       await registerPublicCustomer({
         tenantSlug: slug,
-        phone: phoneValue,
+        phone: onlyDigits(phoneValue),
         name: formValues.name?.trim() || undefined,
         email: emailValue || undefined,
         birthdate: formValues.birthdate?.trim() || undefined,
         gender: formValues.gender?.trim() || undefined,
-        cpfCnpj: formValues.cpf_cnpj?.trim() || undefined,
+        cpfCnpj: formValues.cpf_cnpj ? onlyDigits(formValues.cpf_cnpj) : undefined,
         address: formValues.address?.trim() || undefined,
       });
 
@@ -306,16 +317,35 @@ export default function PublicCampaignPage() {
   }
 
   const pendingReward = rewards.find((r) => r.status === "pending");
+  const currentParticipation = participations.find((p) => p.campaignId === campaign.id);
+  // Só consideramos "limite atingido" quando NÃO existe reward pendente — afinal,
+  // se há reward pra revelar, o cliente ainda merece girar a roleta. O limite só
+  // bloqueia em sessões futuras quando não há mais nada pra ele jogar.
+  const limitReached = !!currentParticipation?.gamificationLimitReached && !pendingReward;
+  const limitMessage = currentParticipation?.gamificationLimitMessage ?? "Você já atingiu o limite de participações nesta campanha.";
   const survey = campaign?.surveyConfig;
   const surveyEnabled = !!survey?.enabled && (survey?.questions?.length ?? 0) > 0;
   const showSurvey = registered && surveyEnabled && !surveyShown;
-  const mechanicLocked = !registered || showSurvey;
+  const mechanicLocked = !registered || showSurvey || limitReached;
 
   // Slot abaixo do wheel
   const formFields = (campaign?.customerFormConfig ?? []).filter((f) => f.enabled);
   const buttonColor = branding.buttonColor || "#FF6B35";
 
-  const bottomSlot = showSurvey && survey ? (
+  const bottomSlot = limitReached && !showSurvey ? (
+    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 text-center space-y-3">
+      <div className="text-4xl">🎯</div>
+      <p className="text-base font-semibold">{limitMessage}</p>
+      <p className="text-sm opacity-80">
+        Obrigado por participar! Volte mais tarde quando o período for renovado.
+      </p>
+      {rewards.filter((r) => r.status === "redeemed").length > 0 && (
+        <p className="text-xs opacity-70 mt-2">
+          Você já resgatou {rewards.filter((r) => r.status === "redeemed").length} prêmio(s) nesta campanha.
+        </p>
+      )}
+    </div>
+  ) : showSurvey && survey ? (
     <SurveyForm
       config={{
         enabled: survey.enabled,
@@ -350,7 +380,7 @@ export default function PublicCampaignPage() {
         </button>
       </div>
     ) : authPhase === "register" ? (
-      <form onSubmit={handleRegister} className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20 space-y-3">
+      <form onSubmit={handleRegister} autoComplete="off" className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20 space-y-3">
         <div className="flex items-center justify-between mb-1">
           <p className="text-sm font-medium">Cadastre-se pra participar</p>
           <button
@@ -506,14 +536,29 @@ function FullScreenMessage({ children }: { children: React.ReactNode }) {
 // Campo dinâmico baseado na config do tenant
 // ─────────────────────────────────────────────────
 const FIELD_META: Record<string, { label: string; placeholder: string; type: string }> = {
-  phone: { label: "Telefone", placeholder: "Seu telefone", type: "tel" },
+  phone: { label: "Telefone", placeholder: "(11) 98765-4321", type: "tel" },
   name: { label: "Nome", placeholder: "Seu nome", type: "text" },
   email: { label: "Email", placeholder: "seu@email.com", type: "email" },
   birthdate: { label: "Data de nascimento", placeholder: "", type: "date" },
   gender: { label: "Gênero", placeholder: "", type: "select" },
-  cpf_cnpj: { label: "CPF / CNPJ", placeholder: "Somente números", type: "text" },
+  cpf_cnpj: { label: "CPF / CNPJ", placeholder: "000.000.000-00", type: "text" },
   address: { label: "Endereço", placeholder: "Rua, número, bairro, cidade", type: "textarea" },
 };
+
+function applyMask(fieldKey: string, raw: string): string {
+  if (fieldKey === "phone") return maskPhoneBR(raw);
+  if (fieldKey === "cpf_cnpj") return maskCpfCnpj(raw);
+  return raw;
+}
+
+function validateField(fieldKey: string, value: string, required: boolean): string | null {
+  const v = (value ?? "").trim();
+  if (!v) return required ? "Campo obrigatório" : null;
+  if (fieldKey === "email" && !isValidEmail(v)) return "Email inválido";
+  if (fieldKey === "phone" && !isValidPhoneBR(v)) return "Telefone inválido";
+  if (fieldKey === "cpf_cnpj" && !isValidCpfCnpj(v)) return "CPF/CNPJ inválido";
+  return null;
+}
 
 function DynamicFormField({
   fieldKey,
@@ -529,42 +574,74 @@ function DynamicFormField({
   const meta = FIELD_META[fieldKey] ?? { label: fieldKey, placeholder: "", type: "text" };
   const placeholder = `${meta.placeholder}${required ? "" : " (opcional)"}`;
   const baseClass = "w-full px-4 rounded-lg bg-white/90 text-gray-900 placeholder:text-gray-500";
+  const [touched, setTouched] = useState(false);
+  const error = touched ? validateField(fieldKey, value, required) : null;
+  const errorClass = error ? "ring-2 ring-red-400" : "";
+  const randomName = useMemo(() => `field-${fieldKey}-${Math.random().toString(36).slice(2, 8)}`, [fieldKey]);
+
+  const inputType = fieldKey === "cpf_cnpj" || fieldKey === "phone" ? "tel" : meta.type;
 
   if (meta.type === "select" && fieldKey === "gender") {
     return (
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`h-11 ${baseClass}`}
-      >
-        <option value="">{required ? "Selecione o gênero" : "Gênero (opcional)"}</option>
-        <option value="female">Feminino</option>
-        <option value="male">Masculino</option>
-        <option value="other">Outro</option>
-        <option value="prefer_not_say">Prefiro não dizer</option>
-      </select>
+      <div>
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={() => setTouched(true)}
+          autoComplete="off"
+          name={randomName}
+          className={`h-11 ${baseClass} ${errorClass}`}
+        >
+          <option value="">{required ? "Selecione o gênero" : "Gênero (opcional)"}</option>
+          <option value="female">Feminino</option>
+          <option value="male">Masculino</option>
+          <option value="other">Outro</option>
+          <option value="prefer_not_say">Prefiro não dizer</option>
+        </select>
+        {error && <p className="mt-1 text-xs text-red-200">{error}</p>}
+      </div>
     );
   }
 
   if (meta.type === "textarea") {
     return (
-      <textarea
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        rows={2}
-        className={`py-2 ${baseClass} resize-none`}
-      />
+      <div>
+        <textarea
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={() => setTouched(true)}
+          rows={2}
+          autoComplete="off"
+          name={randomName}
+          className={`py-2 ${baseClass} resize-none ${errorClass}`}
+        />
+        {error && <p className="mt-1 text-xs text-red-200">{error}</p>}
+      </div>
     );
   }
 
+  // Inputs com máscara (phone, cpf_cnpj) inferem o tamanho máximo
+  const maxLength = fieldKey === "phone" ? 15 : fieldKey === "cpf_cnpj" ? 18 : undefined;
+
   return (
-    <input
-      type={meta.type}
-      placeholder={placeholder}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className={`h-11 ${baseClass}`}
-    />
+    <div>
+      <input
+        type={inputType}
+        inputMode={fieldKey === "phone" || fieldKey === "cpf_cnpj" ? "numeric" : undefined}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(applyMask(fieldKey, e.target.value))}
+        onBlur={() => setTouched(true)}
+        maxLength={maxLength}
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
+        name={randomName}
+        className={`h-11 ${baseClass} ${errorClass}`}
+      />
+      {error && <p className="mt-1 text-xs text-red-200">{error}</p>}
+    </div>
   );
 }

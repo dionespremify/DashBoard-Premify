@@ -109,6 +109,8 @@ export interface PublicParticipation {
     progress?: unknown;
     completedAt?: string | null;
   }[];
+  gamificationLimitReached?: boolean;
+  gamificationLimitMessage?: string | null;
 }
 
 export async function getCustomerParticipations(tenantSlug: string, phone: string): Promise<PublicParticipation[]> {

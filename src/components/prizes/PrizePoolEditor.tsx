@@ -89,6 +89,20 @@ export default function PrizePoolEditor({
   // Estimativa em linguagem natural
   const estimate = useMemo(() => buildEstimate(prizes, everyoneWins), [prizes, everyoneWins]);
 
+  // Porcentagem real de cada prêmio considerando os pesos.
+  // Só calcula quando pelo menos um prêmio tem weight manual definido — senão não dá pra prever
+  // (backend usa quota_restante como peso e isso muda em tempo real).
+  const chancePercents = useMemo<(number | null)[]>(() => {
+    const anyManual = prizes.some((p) => typeof p.weight === "number");
+    if (!anyManual) return prizes.map(() => null);
+    const totalWeight = prizes.reduce((sum, p) => sum + (typeof p.weight === "number" ? p.weight : 0), 0);
+    if (totalWeight <= 0) return prizes.map(() => null);
+    return prizes.map((p) => {
+      if (typeof p.weight !== "number") return null;
+      return Math.round((p.weight / totalWeight) * 1000) / 10;
+    });
+  }, [prizes]);
+
   return (
     <div className="space-y-3">
       {prizes.map((prize, idx) => {
@@ -137,17 +151,17 @@ export default function PrizePoolEditor({
                   type="text"
                   value={prize.label}
                   onChange={(e) => updatePrize(idx, { label: e.target.value })}
-                  className="h-10 px-3 text-sm border border-gray-300 rounded-lg dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                  className="h-10 px-3 text-sm border border-gray-300 rounded-lg bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:[color-scheme:dark]"
                   placeholder="Nome do prêmio (ex: Caipirinha grátis)"
                 />
                 <div className="grid grid-cols-[1fr_120px] gap-2">
                   <select
                     value={prize.type}
                     onChange={(e) => updatePrize(idx, { type: e.target.value as PrizeDefinition["type"] })}
-                    className="h-10 px-3 text-sm border border-gray-300 rounded-lg dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                    className="h-10 px-3 text-sm border border-gray-300 rounded-lg bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:[color-scheme:dark]"
                   >
                     {TYPE_OPTIONS.map((t) => (
-                      <option key={t.value} value={t.value}>
+                      <option key={t.value} value={t.value} className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">
                         {t.label}
                       </option>
                     ))}
@@ -161,7 +175,7 @@ export default function PrizePoolEditor({
                         updatePrize(idx, { value: e.target.value ? parseInt(e.target.value, 10) : undefined })
                       }
                       placeholder={prize.type === "discount_percent" ? "%" : "centavos"}
-                      className="h-10 px-3 text-sm border border-gray-300 rounded-lg dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                      className="h-10 px-3 text-sm border border-gray-300 rounded-lg bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:[color-scheme:dark]"
                     />
                   )}
                 </div>
@@ -205,10 +219,11 @@ export default function PrizePoolEditor({
                 </div>
               </div>
 
-              {/* Quota */}
-              <div className="grid gap-2">
-                <div className="flex items-center gap-2">
-                  <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
+              {/* Quota + peso (mesma coluna do grid) */}
+              <div className="grid gap-3">
+                <div className="grid gap-2">
+                  <div className="flex items-center gap-2">
+                  <label className="inline-flex items-center gap-1 text-xs cursor-pointer text-gray-700 dark:text-gray-300">
                     <input
                       type="radio"
                       checked={!quotaIsLimited}
@@ -216,7 +231,7 @@ export default function PrizePoolEditor({
                     />
                     Ilimitado
                   </label>
-                  <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
+                  <label className="inline-flex items-center gap-1 text-xs cursor-pointer text-gray-700 dark:text-gray-300">
                     <input
                       type="radio"
                       checked={quotaIsLimited}
@@ -236,7 +251,7 @@ export default function PrizePoolEditor({
                           quota: { ...prize.quota!, limit: parseInt(e.target.value || "1", 10) },
                         })
                       }
-                      className="h-9 px-2 text-sm border border-gray-300 rounded dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                      className="h-9 px-2 text-sm border border-gray-300 rounded bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:[color-scheme:dark]"
                     />
                     <select
                       value={prize.quota!.period}
@@ -245,16 +260,42 @@ export default function PrizePoolEditor({
                           quota: { ...prize.quota!, period: e.target.value as PrizeQuota["period"] },
                         })
                       }
-                      className="h-9 px-2 text-sm border border-gray-300 rounded dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                      className="h-9 px-2 text-sm border border-gray-300 rounded bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:[color-scheme:dark]"
                     >
                       {PERIOD_OPTIONS.map((p) => (
-                        <option key={p.value} value={p.value}>
+                        <option key={p.value} value={p.value} className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">
                           {p.label}
                         </option>
                       ))}
                     </select>
                   </div>
                 )}
+                </div>
+
+                {/* Peso / chance */}
+                <div className="grid gap-1 pt-2 border-t border-gray-200 dark:border-gray-700">
+                  <label className="text-xs text-gray-600 dark:text-gray-400">Chance (peso)</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="auto"
+                      value={prize.weight ?? ""}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const next = raw === "" ? undefined : Math.max(0, parseInt(raw, 10) || 0);
+                        updatePrize(idx, { weight: next });
+                      }}
+                      className="w-20 h-9 px-2 text-sm border border-gray-300 rounded bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:[color-scheme:dark]"
+                    />
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {chancePercents[idx] != null
+                        ? `≈ ${chancePercents[idx]}%`
+                        : "automático"}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               {/* Remover */}

@@ -77,7 +77,9 @@ function RedeemTab() {
     setRedeeming(true);
     setError(null);
     try {
-      const updated = await redeemReward(reward.code);
+      // Manda só o suffix (últimos 8 chars) — mesmo formato que o caixa digita e a busca acha.
+      const shortCode = reward.code.split(":").pop() ?? reward.code;
+      const updated = await redeemReward(shortCode);
       setReward(updated);
       setSuccess(`✅ Prêmio resgatado com sucesso! Entregue: ${updated.description}`);
       // Limpa pra próxima validação

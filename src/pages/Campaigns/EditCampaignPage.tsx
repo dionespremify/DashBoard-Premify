@@ -6,7 +6,8 @@ import Button from "../../components/ui/button/Button";
 import Label from "../../components/form/Label";
 import Input from "../../components/form/input/InputField";
 import { extractApiError } from "../../api/client";
-import { DEFAULT_CUSTOMER_FORM, getCampaign, updateCampaign, type Campaign, type CustomerFormField } from "../../api/campaigns";
+import { DEFAULT_CUSTOMER_FORM, getCampaign, updateCampaign, type Campaign, type CustomerFormField, type ParticipationLimitConfig } from "../../api/campaigns";
+import ParticipationLimitEditor from "../../components/campaigns/ParticipationLimitEditor";
 import { getBranding, type Branding } from "../../api/branding";
 import type { WizardDimensionQuestion } from "../../api/wizard";
 import PrizePoolEditor, { type PrizeDefinition } from "../../components/prizes/PrizePoolEditor";
@@ -36,6 +37,7 @@ export default function EditCampaignPage() {
   const [dimensioning, setDimensioning] = useState<Record<string, unknown>>({});
   const [customerFormConfig, setCustomerFormConfig] = useState<CustomerFormField[]>(DEFAULT_CUSTOMER_FORM);
   const [surveyConfig, setSurveyConfig] = useState<SurveyConfig>(DEFAULT_SURVEY_CONFIG);
+  const [participationLimit, setParticipationLimit] = useState<ParticipationLimitConfig>({ enabled: false });
   const [branding, setBranding] = useState<Branding | null>(null);
 
   useEffect(() => {
@@ -66,6 +68,13 @@ export default function EditCampaignPage() {
         if (c.surveyConfig) {
           setSurveyConfig(c.surveyConfig);
         }
+        if (c.participationLimit) {
+          setParticipationLimit({
+            enabled: c.participationLimit.enabled,
+            period: c.participationLimit.period ?? "total",
+            count: c.participationLimit.count ?? 1,
+          });
+        }
       } catch (err) {
         if (active) setError(extractApiError(err, "Erro ao carregar campanha"));
       } finally {
@@ -95,14 +104,20 @@ export default function EditCampaignPage() {
     setSaving(true);
     setError(null);
     try {
+      // Se o limite estiver ativo, forçamos CPF como required no formulário.
+      const finalFormConfig = participationLimit.enabled
+        ? ensureCpfRequired(customerFormConfig)
+        : customerFormConfig;
+
       await updateCampaign(campaign.id, {
         name: name.trim(),
         description: description.trim() || undefined,
         startsAt: new Date(startsAt + "T00:00:00").toISOString(),
         endsAt: endsAt ? new Date(endsAt + "T23:59:59").toISOString() : undefined,
         dimensioning,
-        customerFormConfig,
+        customerFormConfig: finalFormConfig,
         surveyConfig,
+        participationLimit,
       });
       navigate(`/campanhas/${campaign.id}`, { replace: true });
     } catch (err) {
@@ -299,6 +314,16 @@ export default function EditCampaignPage() {
                     </p>
                     <SurveyConfigEditor value={surveyConfig} onChange={setSurveyConfig} />
                   </div>
+                </div>
+              ),
+            },
+            {
+              key: "limit",
+              label: "Limite",
+              icon: "🚦",
+              content: (
+                <div className="max-w-3xl mx-auto">
+                  <ParticipationLimitEditor value={participationLimit} onChange={setParticipationLimit} />
                 </div>
               ),
             },
@@ -542,4 +567,16 @@ function EditSingleImageInput({
       {error && <p className="mt-1 text-xs text-error-500">{error}</p>}
     </div>
   );
+}
+
+function ensureCpfRequired(fields: CustomerFormField[]): CustomerFormField[] {
+  const copy = fields.map((f) => ({ ...f }));
+  const cpf = copy.find((f) => f.key === "cpf_cnpj");
+  if (cpf) {
+    cpf.enabled = true;
+    cpf.required = true;
+  } else {
+    copy.push({ key: "cpf_cnpj", enabled: true, required: true });
+  }
+  return copy;
 }

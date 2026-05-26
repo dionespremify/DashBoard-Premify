@@ -70,6 +70,14 @@ export const CUSTOMER_FIELD_META: Record<string, { label: string; icon: string; 
   address: { label: "Endereço", icon: "🏠", type: "textarea" },
 };
 
+export type ParticipationLimitPeriod = "total" | "day" | "week" | "month";
+
+export interface ParticipationLimitConfig {
+  enabled: boolean;
+  period?: ParticipationLimitPeriod | null;
+  count?: number | null;
+}
+
 export interface Campaign {
   id: number;
   blueprintCode?: string | null;
@@ -83,6 +91,7 @@ export interface Campaign {
   blueprint?: BlueprintEditContext | null;
   customerFormConfig?: CustomerFormField[];
   surveyConfig?: SurveyConfig | null;
+  participationLimit?: ParticipationLimitConfig | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -95,6 +104,7 @@ export interface UpdateCampaignRequest {
   dimensioning: Record<string, unknown>;
   customerFormConfig?: CustomerFormField[];
   surveyConfig?: SurveyConfig;
+  participationLimit?: ParticipationLimitConfig;
 }
 
 export interface CreateCampaignRequest {
@@ -107,6 +117,7 @@ export interface CreateCampaignRequest {
   dimensioning: Record<string, unknown>;
   customerFormConfig?: CustomerFormField[];
   surveyConfig?: SurveyConfig;
+  participationLimit?: ParticipationLimitConfig;
   activateImmediately: boolean;
 }
 
