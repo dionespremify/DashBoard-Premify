@@ -45,6 +45,13 @@ export interface RecentReward {
   redeemedAt?: string | null;
 }
 
+export interface SurveyRatingStats {
+  totalResponses: number;
+  averageRating: number;
+  maxScale: number;
+  distribution: { rating: number; count: number }[];
+}
+
 export interface DashboardStats {
   campaigns: CampaignStats;
   customers: CustomerStats;
@@ -52,9 +59,11 @@ export interface DashboardStats {
   topCampaigns: TopCampaign[];
   weeklyActivity: DailyActivity[];
   recentRewards: RecentReward[];
+  surveyRatings: SurveyRatingStats;
 }
 
-export async function getDashboardStats(): Promise<DashboardStats> {
-  const { data } = await apiClient.get<DashboardStats>("/dashboard/stats");
+export async function getDashboardStats(campaignId?: number | null): Promise<DashboardStats> {
+  const params = campaignId ? { campaignId } : undefined;
+  const { data } = await apiClient.get<DashboardStats>("/dashboard/stats", { params });
   return data;
 }

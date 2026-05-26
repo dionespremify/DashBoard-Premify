@@ -7,14 +7,17 @@ import App from "./App.tsx";
 import { AppWrapper } from "./components/common/PageMeta.tsx";
 import { ThemeProvider } from "./context/ThemeContext.tsx";
 import { AuthProvider } from "./context/AuthContext.tsx";
+import { CampaignFilterProvider } from "./context/CampaignFilterContext.tsx";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>
       <AuthProvider>
-        <AppWrapper>
-          <App />
-        </AppWrapper>
+        <CampaignFilterProvider>
+          <AppWrapper>
+            <App />
+          </AppWrapper>
+        </CampaignFilterProvider>
       </AuthProvider>
     </ThemeProvider>
   </StrictMode>,

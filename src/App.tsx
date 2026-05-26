@@ -26,6 +26,8 @@ import CampaignDetail from "./pages/Campaigns/CampaignDetail";
 import EditCampaignPage from "./pages/Campaigns/EditCampaignPage";
 import BrandingPage from "./pages/Branding/BrandingPage";
 import AccountPage from "./pages/AccountPage";
+import ReportsPage from "./pages/Reports/ReportsPage";
+import ManagementPage from "./pages/Management/ManagementPage";
 import PublicCampaignPage from "./pages/Public/PublicCampaignPage";
 
 export default function App() {
@@ -69,6 +71,8 @@ export default function App() {
             <Route path="/campanhas/:id/editar" element={<EditCampaignPage />} />
             <Route path="/personalizacao" element={<BrandingPage />} />
             <Route path="/conta" element={<AccountPage />} />
+            <Route path="/relatorios" element={<ReportsPage />} />
+            <Route path="/gerenciamento" element={<ManagementPage />} />
 
             {/* Páginas-demo do template (mantidas como referência) */}
             <Route path="/calendar" element={<Calendar />} />

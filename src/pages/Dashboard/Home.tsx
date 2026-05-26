@@ -6,6 +6,7 @@ import PageMeta from "../../components/common/PageMeta";
 import { getDashboardStats, type DashboardStats } from "../../api/dashboard";
 import { extractApiError } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
+import { useCampaignFilter } from "../../context/CampaignFilterContext";
 
 const STATUS_LABEL: Record<string, { label: string; className: string }> = {
   draft: { label: "Rascunho", className: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300" },
@@ -19,15 +20,18 @@ const STATUS_LABEL: Record<string, { label: string; className: string }> = {
 
 export default function Home() {
   const { user } = useAuth();
+  const { selectedId, campaigns } = useCampaignFilter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
+    setError(null);
     (async () => {
       try {
-        const data = await getDashboardStats();
+        const data = await getDashboardStats(selectedId);
         if (active) setStats(data);
       } catch (err) {
         if (active) setError(extractApiError(err, "Erro ao carregar dashboard"));
@@ -38,7 +42,9 @@ export default function Home() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [selectedId]);
+
+  const selectedCampaign = selectedId ? campaigns.find((c) => c.id === selectedId) : null;
 
   return (
     <>
@@ -49,7 +55,9 @@ export default function Home() {
           Olá, {user?.name?.split(" ")[0] ?? "boas-vindas"} 👋
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Acompanhe o desempenho das suas campanhas em tempo real.
+          {selectedCampaign
+            ? <>Métricas filtradas pela campanha <span className="font-medium text-brand-600 dark:text-brand-300">{selectedCampaign.name}</span>.</>
+            : "Acompanhe o desempenho das suas campanhas em tempo real."}
         </p>
       </div>
 
@@ -62,27 +70,42 @@ export default function Home() {
       {loading ? (
         <div className="p-10 text-center text-gray-500 dark:text-gray-400">Carregando métricas…</div>
       ) : stats ? (
-        <DashboardContent stats={stats} />
+        <DashboardContent stats={stats} filteredByCampaign={!!selectedId} />
       ) : null}
     </>
   );
 }
 
-function DashboardContent({ stats }: { stats: DashboardStats }) {
+function DashboardContent({ stats, filteredByCampaign }: { stats: DashboardStats; filteredByCampaign: boolean }) {
   return (
     <div className="grid grid-cols-12 gap-4 md:gap-6">
       {/* Cards de métricas principais */}
       <div className="col-span-12 grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard
-          icon="🎯"
-          label="Campanhas ativas"
-          value={stats.campaigns.active}
-          subtitle={`${stats.campaigns.total} no total`}
-          color="success"
-        />
+        {filteredByCampaign ? (
+          <MetricCard
+            icon="🎯"
+            label="Status da campanha"
+            value={stats.campaigns.active + stats.campaigns.paused + stats.campaigns.draft + stats.campaigns.ended}
+            subtitle={
+              stats.campaigns.active ? "ativa" :
+              stats.campaigns.paused ? "pausada" :
+              stats.campaigns.draft ? "rascunho" :
+              stats.campaigns.ended ? "encerrada" : "—"
+            }
+            color="success"
+          />
+        ) : (
+          <MetricCard
+            icon="🎯"
+            label="Campanhas ativas"
+            value={stats.campaigns.active}
+            subtitle={`${stats.campaigns.total} no total`}
+            color="success"
+          />
+        )}
         <MetricCard
           icon="👥"
-          label="Clientes"
+          label={filteredByCampaign ? "Participantes" : "Clientes"}
           value={stats.customers.total}
           subtitle={`+${stats.customers.last7Days} últimos 7 dias`}
           color="brand"
@@ -108,18 +131,20 @@ function DashboardContent({ stats }: { stats: DashboardStats }) {
         <WeeklyActivityChart data={stats.weeklyActivity} />
       </div>
 
-      {/* Breakdown status das campanhas */}
+      {/* Notas da pesquisa de satisfação */}
       <div className="col-span-12 xl:col-span-4">
-        <CampaignStatusBreakdown campaigns={stats.campaigns} />
+        <SurveyRatingsChart data={stats.surveyRatings} />
       </div>
 
-      {/* Top campanhas */}
-      <div className="col-span-12 xl:col-span-7">
-        <TopCampaignsTable items={stats.topCampaigns} />
-      </div>
+      {/* Top campanhas — só na visão geral */}
+      {!filteredByCampaign && (
+        <div className="col-span-12 xl:col-span-7">
+          <TopCampaignsTable items={stats.topCampaigns} />
+        </div>
+      )}
 
       {/* Últimos prêmios gerados */}
-      <div className="col-span-12 xl:col-span-5">
+      <div className={filteredByCampaign ? "col-span-12" : "col-span-12 xl:col-span-5"}>
         <RecentRewardsList items={stats.recentRewards} />
       </div>
     </div>
@@ -202,34 +227,77 @@ function WeeklyActivityChart({ data }: { data: DashboardStats["weeklyActivity"] 
 }
 
 // ─────────────────────────────────────────────────
-function CampaignStatusBreakdown({ campaigns }: { campaigns: DashboardStats["campaigns"] }) {
-  const rows: { label: string; value: number; color: string }[] = [
-    { label: "Ativas", value: campaigns.active, color: "bg-success-500" },
-    { label: "Pausadas", value: campaigns.paused, color: "bg-warning-500" },
-    { label: "Rascunhos", value: campaigns.draft, color: "bg-gray-400" },
-    { label: "Encerradas", value: campaigns.ended, color: "bg-gray-300" },
-  ];
-  const total = campaigns.total || 1;
+function SurveyRatingsChart({ data }: { data: DashboardStats["surveyRatings"] }) {
+  const options: ApexOptions = useMemo(
+    () => ({
+      chart: { type: "bar", toolbar: { show: false }, fontFamily: "inherit" },
+      colors: ["#FF6B35"],
+      plotOptions: {
+        bar: {
+          horizontal: true,
+          borderRadius: 4,
+          barHeight: "70%",
+          distributed: false,
+          dataLabels: { position: "top" },
+        },
+      },
+      dataLabels: {
+        enabled: true,
+        offsetX: 30,
+        style: { fontSize: "11px", colors: ["#6b7280"] },
+      },
+      stroke: { width: 0 },
+      grid: { borderColor: "#e5e7eb", strokeDashArray: 4 },
+      xaxis: {
+        labels: { style: { fontSize: "11px" } },
+      },
+      yaxis: {
+        labels: { style: { fontSize: "12px", fontWeight: 600 } },
+      },
+      tooltip: { theme: "light", y: { formatter: (v: number) => `${v} resposta${v === 1 ? "" : "s"}` } },
+      legend: { show: false },
+    }),
+    [],
+  );
+
+  const categories = data.distribution.map((d) => `${d.rating}★`);
+  const series = [{ name: "Respostas", data: data.distribution.map((d) => d.count) }];
 
   return (
     <div className="p-5 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700 h-full">
-      <h3 className="text-base font-semibold text-gray-800 dark:text-white/90 mb-4">Status das campanhas</h3>
-      <div className="space-y-4">
-        {rows.map((row) => (
-          <div key={row.label}>
-            <div className="flex items-center justify-between text-sm mb-1.5">
-              <span className="text-gray-700 dark:text-gray-300">{row.label}</span>
-              <span className="font-semibold text-gray-800 dark:text-white/90">{row.value}</span>
+      <div className="flex items-start justify-between mb-1">
+        <div>
+          <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">
+            Notas da pesquisa
+          </h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Distribuição das avaliações recebidas
+          </p>
+        </div>
+        {data.totalResponses > 0 && (
+          <div className="text-right">
+            <div className="text-2xl font-bold text-brand-500">
+              {data.averageRating.toFixed(1)}
+              <span className="text-sm font-medium text-gray-400">/{data.maxScale}</span>
             </div>
-            <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full ${row.color}`}
-                style={{ width: `${(row.value / total) * 100}%` }}
-              />
-            </div>
+            <div className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wide">média</div>
           </div>
-        ))}
+        )}
       </div>
+
+      {data.totalResponses === 0 ? (
+        <div className="flex flex-col items-center justify-center py-10 text-center">
+          <div className="text-3xl mb-2">📊</div>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Nenhuma avaliação recebida ainda.
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            Ative a pesquisa em alguma campanha pra começar a coletar.
+          </p>
+        </div>
+      ) : (
+        <Chart options={{ ...options, xaxis: { ...options.xaxis, categories } }} series={series} type="bar" height={260} />
+      )}
     </div>
   );
 }

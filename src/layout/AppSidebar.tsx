@@ -38,6 +38,19 @@ const navItems: NavItem[] = [
     name: "Personalização",
     path: "/personalizacao",
   },
+  {
+    icon: <GridIcon />,
+    name: "Gerenciamento",
+    path: "/gerenciamento",
+  },
+  {
+    icon: <PieChartIcon />,
+    name: "Relatórios",
+    subItems: [
+      { name: "Pesquisas", path: "/relatorios#pesquisas", pro: false },
+      { name: "Prêmios", path: "/relatorios#premios", pro: false },
+    ],
+  },
 ];
 
 const othersItems: NavItem[] = [];
