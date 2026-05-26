@@ -261,8 +261,8 @@ export default function PublicCampaignPage() {
   function startReveal(reward: PublicReward) {
     if (!campaign) return;
     const prizeId = extractPrizeIdFromCode(reward.code);
-    const wheelMech = campaign.mechanics.find((m) => m.type === "wheel");
-    const prizes = ((wheelMech?.config as { prizes?: PrizeDefinition[] } | undefined)?.prizes ?? []).filter(
+    const mech = campaign.mechanics.find((m) => m.type === "wheel" || m.type === "scratch" || m.type === "box");
+    const prizes = ((mech?.config as { prizes?: PrizeDefinition[] } | undefined)?.prizes ?? []).filter(
       (p) => p.type !== "try_again",
     );
     const idx = prizeId ? prizes.findIndex((p) => p.id === prizeId) : -1;
@@ -270,6 +270,18 @@ export default function PublicCampaignPage() {
     setRevealingReward(reward);
     setWinningIndex(idx);
   }
+
+  // Pra raspadinha: assim que houver reward pendente, já mostra raspável (sem botão CTA inicial).
+  useEffect(() => {
+    if (!campaign) return;
+    const pending = rewards.find((r) => r.status === "pending");
+    if (!pending) return;
+    const tenantGamif = campaign.tenant.gamificationType;
+    if (tenantGamif !== "scratch") return;
+    if (winningIndex != null) return;
+    startReveal(pending);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaign, rewards]);
 
   const branding: CampaignBranding = useMemo(() => {
     if (!campaign) return {};
@@ -281,6 +293,7 @@ export default function PublicCampaignPage() {
       backgroundImageUrl: campaign.tenant.backgroundImageUrl,
       buttonColor: campaign.tenant.buttonColor,
       wheelTheme: campaign.tenant.wheelTheme,
+      gamificationType: campaign.tenant.gamificationType,
     };
   }, [campaign]);
 

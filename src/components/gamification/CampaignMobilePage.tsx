@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import WheelSVG, { type WheelTheme } from "./WheelSVG";
+import ScratchCard from "./ScratchCard";
 import CelebrationModal from "./CelebrationModal";
 import StampCard from "./StampCard";
 import type { PrizeDefinition } from "../prizes/PrizePoolEditor";
+
+export type GamificationType = "wheel" | "scratch" | "box";
 
 export interface CampaignBranding {
   tenantSlug?: string;
@@ -12,6 +15,7 @@ export interface CampaignBranding {
   backgroundImageUrl?: string | null;
   buttonColor?: string | null;
   wheelTheme?: WheelTheme | null;
+  gamificationType?: GamificationType | null;
 }
 
 export interface CampaignMechanicData {
@@ -90,11 +94,15 @@ export default function CampaignMobilePage({
   demoMode = false,
   hideMechanic = false,
 }: Props) {
-  const wheel = campaign.mechanics.find((m) => m.type === "wheel");
+  // Encontra qualquer mecânica de prize-pool (wheel | scratch | box) — todas usam o mesmo schema.
+  const wheel = campaign.mechanics.find((m) => m.type === "wheel" || m.type === "scratch" || m.type === "box");
   const prizes = useMemo(
     () => (wheel?.config?.prizes ?? []) as PrizeDefinition[],
     [wheel],
   );
+  // Tipo visual escolhido pelo dono (branding) ou fallback: tipo declarado na mecânica.
+  const gamificationType: GamificationType =
+    branding.gamificationType ?? ((wheel?.type as GamificationType | undefined) ?? "wheel");
   // Prioridade: prop wheelTheme > branding.wheelTheme > config legacy da mecânica > classic
   const effectiveTheme: WheelTheme =
     wheelTheme ?? branding.wheelTheme ?? (wheel?.config?.theme as WheelTheme | undefined) ?? "classic";
@@ -109,6 +117,17 @@ export default function CampaignMobilePage({
     // Reset reveal quando muda o prêmio determinado
     setRevealed(null);
   }, [winningPrizeIndex]);
+
+  // Pra raspadinha no modo demo: já inicializa um prêmio aleatório de cara, pra cliente raspar.
+  useEffect(() => {
+    if (!demoMode || gamificationType !== "scratch") return;
+    if (demoWinningIndex != null) return;
+    const visible = prizes.filter((p) => p.type !== "try_again");
+    if (visible.length === 0) return;
+    setDemoWinningIndex(Math.floor(Math.random() * visible.length));
+    setDemoSpinKey((k) => k + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demoMode, gamificationType, prizes]);
 
   function startDemoSpin() {
     const visible = prizes.filter((p) => p.type !== "try_again");
@@ -170,7 +189,7 @@ export default function CampaignMobilePage({
         {preMechanicSlot}
 
         {/* Mecânica visual — ocultada antes da autenticação */}
-        {!hideMechanic && wheel && (
+        {!hideMechanic && wheel && gamificationType === "wheel" && (
           <div className="flex flex-col items-center mb-6">
             <WheelSVG
               key={demoSpinKey > 0 ? `demo-${demoSpinKey}` : "live"}
@@ -195,6 +214,33 @@ export default function CampaignMobilePage({
             >
               {ctaLabel}
             </button>
+          </div>
+        )}
+
+        {!hideMechanic && wheel && gamificationType === "scratch" && (
+          <div className="flex flex-col items-center mb-6">
+            <ScratchCard
+              key={demoSpinKey > 0 ? `demo-${demoSpinKey}` : "live"}
+              prizes={prizes}
+              size={300}
+              buttonColor={buttonColor}
+              winningPrizeIndex={demoMode ? demoWinningIndex : winningPrizeIndex}
+              autoReveal={false}
+              onRevealed={(p) => {
+                setRevealed(p);
+                onSpinEnd?.(p);
+              }}
+            />
+            {demoMode && (
+              <button
+                type="button"
+                onClick={startDemoSpin}
+                className="mt-5 px-6 py-3 rounded-full font-semibold text-white shadow-lg hover:scale-105 transition-transform"
+                style={{ backgroundColor: buttonColor }}
+              >
+                🔄 Gerar novo prêmio (preview)
+              </button>
+            )}
           </div>
         )}
 

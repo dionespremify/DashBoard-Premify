@@ -20,6 +20,7 @@ export interface PublicCampaign {
     backgroundImageUrl?: string | null;
     buttonColor?: string | null;
     wheelTheme?: "classic" | "vegas" | "neon" | null;
+    gamificationType?: "wheel" | "scratch" | "box" | null;
   };
   customerFormConfig?: { key: string; enabled: boolean; required: boolean }[];
   surveyConfig?: {

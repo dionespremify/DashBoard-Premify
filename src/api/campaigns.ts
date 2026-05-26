@@ -78,6 +78,8 @@ export interface ParticipationLimitConfig {
   count?: number | null;
 }
 
+export type GamificationType = "wheel" | "scratch" | "box";
+
 export interface Campaign {
   id: number;
   blueprintCode?: string | null;
@@ -92,6 +94,7 @@ export interface Campaign {
   customerFormConfig?: CustomerFormField[];
   surveyConfig?: SurveyConfig | null;
   participationLimit?: ParticipationLimitConfig | null;
+  gamificationType?: GamificationType | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -105,6 +108,7 @@ export interface UpdateCampaignRequest {
   customerFormConfig?: CustomerFormField[];
   surveyConfig?: SurveyConfig;
   participationLimit?: ParticipationLimitConfig;
+  gamificationType?: GamificationType;
 }
 
 export interface CreateCampaignRequest {

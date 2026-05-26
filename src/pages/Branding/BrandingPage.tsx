@@ -8,7 +8,7 @@ import CampaignMobilePage, {
   type CampaignBranding,
   type CampaignDisplay,
 } from "../../components/gamification/CampaignMobilePage";
-import { getBranding, updateBranding, type Branding, type WheelTheme } from "../../api/branding";
+import { getBranding, updateBranding, type Branding, type WheelTheme, type GamificationType } from "../../api/branding";
 import { extractApiError } from "../../api/client";
 import { listCampaigns, type Campaign } from "../../api/campaigns";
 import { uploadImage } from "../../api/uploads";
@@ -17,6 +17,38 @@ const THEME_OPTIONS: { value: WheelTheme; label: string; icon: string; descripti
   { value: "classic", label: "Clássico", icon: "⚪", description: "Simples e elegante" },
   { value: "vegas", label: "Las Vegas", icon: "🎰", description: "Com luzes piscando, estilo cassino" },
   { value: "neon", label: "Neon", icon: "💜", description: "Visual futurista com glow" },
+];
+
+const GAMIFICATION_OPTIONS: {
+  value: GamificationType;
+  label: string;
+  icon: string;
+  tag?: string;
+  description: string;
+  available: boolean;
+}[] = [
+  {
+    value: "wheel",
+    label: "Roleta",
+    icon: "🎡",
+    description: "O cliente gira a roleta e descobre o prêmio na hora.",
+    available: true,
+  },
+  {
+    value: "scratch",
+    label: "Raspadinha",
+    icon: "🎟️",
+    description: "O cliente raspa a área cinza com o dedo e revela o prêmio.",
+    available: true,
+  },
+  {
+    value: "box",
+    label: "Caixa surpresa",
+    icon: "📦",
+    tag: "em breve",
+    description: "Abrindo uma caixa misteriosa com animação 3D.",
+    available: false,
+  },
 ];
 
 const DEMO_CAMPAIGN: CampaignDisplay = {
@@ -50,6 +82,7 @@ export default function BrandingPage() {
   const [backgroundImageUrl, setBackgroundImageUrl] = useState("");
   const [buttonColor, setButtonColor] = useState("#FF6B35");
   const [wheelTheme, setWheelTheme] = useState<WheelTheme>("classic");
+  const [gamificationType, setGamificationType] = useState<GamificationType>("wheel");
 
   // Pega 1 campanha real (se houver) pra preview, senão demo
   const [previewCampaign, setPreviewCampaign] = useState<CampaignDisplay>(DEMO_CAMPAIGN);
@@ -66,6 +99,7 @@ export default function BrandingPage() {
         if (b.backgroundImageUrl) setBackgroundImageUrl(b.backgroundImageUrl);
         if (b.buttonColor) setButtonColor(b.buttonColor);
         setWheelTheme(b.wheelTheme ?? "classic");
+        setGamificationType(b.gamificationType ?? "wheel");
       } catch (err) {
         if (active) setError(extractApiError(err, "Erro ao carregar branding"));
       } finally {
@@ -110,6 +144,7 @@ export default function BrandingPage() {
         backgroundImageUrl: backgroundImageUrl || null,
         buttonColor: buttonColor || null,
         wheelTheme,
+        gamificationType,
       });
       setBrandingState(b);
       setSuccess("Personalização salva! Suas campanhas já refletem essas mudanças.");
@@ -129,6 +164,7 @@ export default function BrandingPage() {
     backgroundImageUrl: backgroundImageUrl || null,
     buttonColor,
     wheelTheme,
+    gamificationType,
   };
 
   if (loading) {
@@ -213,6 +249,50 @@ export default function BrandingPage() {
           </div>
 
           <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+            <h2 className="mb-1 text-lg font-medium text-gray-800 dark:text-white/90">Tipo de gamificação</h2>
+            <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
+              Define como o cliente final vai descobrir o prêmio. Os prêmios e as regras
+              continuam configurados na campanha — só a apresentação visual muda.
+            </p>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              {GAMIFICATION_OPTIONS.map((g) => {
+                const selected = gamificationType === g.value;
+                return (
+                  <button
+                    type="button"
+                    key={g.value}
+                    disabled={!g.available}
+                    onClick={() => g.available && setGamificationType(g.value)}
+                    className={`relative p-4 text-left rounded-xl border-2 transition ${
+                      !g.available
+                        ? "bg-gray-50 border-gray-200 opacity-60 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700"
+                        : selected
+                          ? "bg-brand-50 border-brand-500 dark:bg-brand-500/10 dark:border-brand-400 shadow-sm"
+                          : "bg-white border-gray-200 hover:border-brand-300 dark:bg-gray-900 dark:border-gray-700 dark:hover:border-brand-500"
+                    }`}
+                  >
+                    {selected && g.available && (
+                      <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-brand-500 text-white text-xs flex items-center justify-center font-bold">
+                        ✓
+                      </div>
+                    )}
+                    {g.tag && (
+                      <div className="absolute top-2 right-2 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide rounded-full bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                        {g.tag}
+                      </div>
+                    )}
+                    <div className="text-4xl mb-2">{g.icon}</div>
+                    <div className="font-semibold text-sm text-gray-800 dark:text-white/90 mb-1">{g.label}</div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{g.description}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {gamificationType === "wheel" && (
+          <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
             <h2 className="mb-1 text-lg font-medium text-gray-800 dark:text-white/90">Estilo da roleta</h2>
             <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
               Aplicado a todas as suas campanhas de roleta.
@@ -242,6 +322,7 @@ export default function BrandingPage() {
               })}
             </div>
           </div>
+          )}
 
           {error && (
             <div className="p-3 text-sm rounded-lg bg-error-50 text-error-700 border border-error-200 dark:bg-error-500/10 dark:text-error-300 dark:border-error-500/30">

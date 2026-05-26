@@ -1,6 +1,7 @@
 import { apiClient } from "./client";
 
 export type WheelTheme = "classic" | "vegas" | "neon";
+export type GamificationType = "wheel" | "scratch" | "box";
 
 export interface Branding {
   tenantSlug: string;
@@ -10,6 +11,7 @@ export interface Branding {
   backgroundImageUrl?: string | null;
   buttonColor?: string | null;
   wheelTheme?: WheelTheme | null;
+  gamificationType?: GamificationType | null;
 }
 
 export interface UpdateBrandingRequest {
@@ -18,6 +20,7 @@ export interface UpdateBrandingRequest {
   backgroundImageUrl?: string | null;
   buttonColor?: string | null;
   wheelTheme?: WheelTheme | null;
+  gamificationType?: GamificationType | null;
 }
 
 export async function getBranding(): Promise<Branding> {

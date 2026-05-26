@@ -159,6 +159,7 @@ export default function EditCampaignPage() {
     backgroundImageUrl: branding?.backgroundImageUrl,
     buttonColor: branding?.buttonColor ?? "#FF6B35",
     wheelTheme: branding?.wheelTheme ?? "vegas",
+    gamificationType: branding?.gamificationType ?? "wheel",
   };
 
   const previewDisplay: CampaignDisplay = {
