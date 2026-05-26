@@ -46,10 +46,13 @@ export default function PrizePoolEditor({
   value,
   onChange,
   everyoneWins,
+  gamificationType = "wheel",
 }: {
   value: PrizeDefinition[];
   onChange: (next: PrizeDefinition[]) => void;
   everyoneWins: boolean;
+  /** Tipo de gamificação ativo — altera quais campos aparecem (ex: "fatias" só pra wheel). */
+  gamificationType?: "wheel" | "scratch" | "box";
 }) {
   const prizes = useMemo(() => (Array.isArray(value) ? value : []), [value]);
 
@@ -185,38 +188,40 @@ export default function PrizePoolEditor({
                   onChange={(v) => updatePrize(idx, { imageUrl: v })}
                 />
 
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-brand-50 border border-brand-200 dark:bg-brand-500/10 dark:border-brand-500/30">
-                  <span className="text-base">🎡</span>
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-gray-800 dark:text-white/90">
-                      Aparece em {slicesCount} {slicesCount === 1 ? "fatia" : "fatias"} da roleta
+                {gamificationType === "wheel" && (
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-brand-50 border border-brand-200 dark:bg-brand-500/10 dark:border-brand-500/30">
+                    <span className="text-base">🎡</span>
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-gray-800 dark:text-white/90">
+                        Aparece em {slicesCount} {slicesCount === 1 ? "fatia" : "fatias"} da roleta
+                      </div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400">
+                        Apenas visual — não muda as chances de sair. Use pra encher a roleta sem duplicar o prêmio.
+                      </div>
                     </div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400">
-                      Apenas visual — não muda as chances de sair. Use pra encher a roleta sem duplicar o prêmio.
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => updatePrize(idx, { slices: Math.max(1, slicesCount - 1) })}
+                        disabled={slicesCount <= 1}
+                        className="w-9 h-9 rounded-lg font-bold text-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        −
+                      </button>
+                      <span className="w-10 text-center font-bold text-lg text-brand-600 dark:text-brand-300">
+                        {slicesCount}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => updatePrize(idx, { slices: Math.min(12, slicesCount + 1) })}
+                        disabled={slicesCount >= 12}
+                        className="w-9 h-9 rounded-lg font-bold text-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        +
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => updatePrize(idx, { slices: Math.max(1, slicesCount - 1) })}
-                      disabled={slicesCount <= 1}
-                      className="w-9 h-9 rounded-lg font-bold text-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      −
-                    </button>
-                    <span className="w-10 text-center font-bold text-lg text-brand-600 dark:text-brand-300">
-                      {slicesCount}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => updatePrize(idx, { slices: Math.min(12, slicesCount + 1) })}
-                      disabled={slicesCount >= 12}
-                      className="w-9 h-9 rounded-lg font-bold text-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Quota + peso (mesma coluna do grid) */}

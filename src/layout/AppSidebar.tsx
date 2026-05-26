@@ -34,11 +34,6 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    icon: <BoxCubeIcon />,
-    name: "Personalização",
-    path: "/personalizacao",
-  },
-  {
     icon: <GridIcon />,
     name: "Gerenciamento",
     path: "/gerenciamento",

@@ -9,6 +9,7 @@ import { extractApiError } from "../../api/client";
 import { DEFAULT_CUSTOMER_FORM, getCampaign, updateCampaign, type Campaign, type CustomerFormField, type ParticipationLimitConfig } from "../../api/campaigns";
 import ParticipationLimitEditor from "../../components/campaigns/ParticipationLimitEditor";
 import { getBranding, type Branding } from "../../api/branding";
+import BrandingForm from "../../components/branding/BrandingForm";
 import type { WizardDimensionQuestion } from "../../api/wizard";
 import PrizePoolEditor, { type PrizeDefinition } from "../../components/prizes/PrizePoolEditor";
 import Tabs from "../../components/common/Tabs";
@@ -39,6 +40,8 @@ export default function EditCampaignPage() {
   const [surveyConfig, setSurveyConfig] = useState<SurveyConfig>(DEFAULT_SURVEY_CONFIG);
   const [participationLimit, setParticipationLimit] = useState<ParticipationLimitConfig>({ enabled: false });
   const [branding, setBranding] = useState<Branding | null>(null);
+  // Draft do branding (não salvo) — usado pelo preview pra refletir mudanças em tempo real.
+  const [brandingDraft, setBrandingDraft] = useState<Branding | null>(null);
 
   useEffect(() => {
     getBranding().then(setBranding).catch(() => setBranding(null));
@@ -127,6 +130,7 @@ export default function EditCampaignPage() {
     }
   }
 
+
   if (loading) {
     return (
       <>
@@ -150,16 +154,17 @@ export default function EditCampaignPage() {
     );
   }
 
-  // Preview branding (do tenant)
+  // Preview usa o draft (ao vivo) quando disponível, com fallback no salvo.
+  const previewSource = brandingDraft ?? branding;
   const previewBranding: CampaignBranding = {
-    tenantSlug: branding?.tenantSlug,
-    tenantName: branding?.tenantName ?? "Seu negócio",
-    logoUrl: branding?.logoUrl,
-    backgroundColor: branding?.backgroundColor ?? "#1a1a2e",
-    backgroundImageUrl: branding?.backgroundImageUrl,
-    buttonColor: branding?.buttonColor ?? "#FF6B35",
-    wheelTheme: branding?.wheelTheme ?? "vegas",
-    gamificationType: branding?.gamificationType ?? "wheel",
+    tenantSlug: previewSource?.tenantSlug,
+    tenantName: previewSource?.tenantName ?? "Seu negócio",
+    logoUrl: previewSource?.logoUrl,
+    backgroundColor: previewSource?.backgroundColor ?? "#1a1a2e",
+    backgroundImageUrl: previewSource?.backgroundImageUrl,
+    buttonColor: previewSource?.buttonColor ?? "#FF6B35",
+    wheelTheme: previewSource?.wheelTheme ?? "vegas",
+    gamificationType: previewSource?.gamificationType ?? "wheel",
   };
 
   const previewDisplay: CampaignDisplay = {
@@ -172,18 +177,6 @@ export default function EditCampaignPage() {
     })),
   };
 
-  const previewTab = (
-    <div className="flex justify-center py-2">
-      <div
-        className="overflow-hidden rounded-[2.5rem] border-[10px] border-gray-800 dark:border-gray-700 shadow-2xl bg-black"
-        style={{ aspectRatio: "9/16", maxHeight: "75vh", width: "min(380px, 100%)" }}
-      >
-        <div className="w-full h-full overflow-auto">
-          <CampaignMobilePage branding={previewBranding} campaign={previewDisplay} interactive={false} demoMode />
-        </div>
-      </div>
-    </div>
-  );
 
   const formTab = (
     <form onSubmit={handleSubmit} className="max-w-3xl mx-auto space-y-5">
@@ -226,6 +219,7 @@ export default function EditCampaignPage() {
                   value={dimensioning[q.key]}
                   onChange={(v) => setDimensioning((d) => ({ ...d, [q.key]: v }))}
                   siblings={dimensioning}
+                  gamificationType={branding?.gamificationType ?? "wheel"}
                 />
               ))}
             </div>
@@ -278,6 +272,38 @@ export default function EditCampaignPage() {
       <div className="max-w-4xl mx-auto">
         <Tabs
           tabs={[
+            {
+              key: "branding",
+              label: "Personalização",
+              icon: "🎨",
+              content: (
+                <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+                  <BrandingForm
+                    onSaved={setBranding}
+                    onDraftChange={setBrandingDraft}
+                    showGlobalWarning
+                  />
+                  <div className="lg:sticky lg:top-4 lg:self-start">
+                    <div className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                      👁 Pré-visualização (ao vivo)
+                    </div>
+                    <div
+                      className="overflow-hidden rounded-[2.5rem] border-[10px] border-gray-800 dark:border-gray-700 shadow-2xl bg-black"
+                      style={{ aspectRatio: "9/16", maxHeight: "70vh" }}
+                    >
+                      <div className="w-full h-full overflow-auto">
+                        <CampaignMobilePage
+                          branding={previewBranding}
+                          campaign={previewDisplay}
+                          interactive={false}
+                          demoMode
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ),
+            },
             { key: "config", label: "Configuração", icon: "⚙️", content: formTab },
             {
               key: "form",
@@ -328,7 +354,6 @@ export default function EditCampaignPage() {
                 </div>
               ),
             },
-            { key: "preview", label: "Preview", icon: "👁", content: previewTab },
           ]}
         />
       </div>
@@ -345,11 +370,13 @@ function DimensionInput({
   value,
   onChange,
   siblings,
+  gamificationType,
 }: {
   question: WizardDimensionQuestion;
   value: unknown;
   onChange: (v: unknown) => void;
   siblings?: Record<string, unknown>;
+  gamificationType?: "wheel" | "scratch" | "box";
 }) {
   const placeholder = question.placeholder ?? "";
 
@@ -361,6 +388,7 @@ function DimensionInput({
           value={(value as PrizeDefinition[]) ?? []}
           onChange={(next) => onChange(next)}
           everyoneWins={(siblings?.everyone_wins as boolean) ?? true}
+          gamificationType={gamificationType}
         />
       </div>
     );

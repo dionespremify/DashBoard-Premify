@@ -118,6 +118,16 @@ export default function CampaignMobilePage({
     setRevealed(null);
   }, [winningPrizeIndex]);
 
+  // Sempre que mudar o tipo de gamificação no demoMode, reseta o estado do demo
+  // (evita auto-spin/modal aparecerem ao trocar entre roleta/raspadinha).
+  useEffect(() => {
+    if (!demoMode) return;
+    setRevealed(null);
+    setDemoSpinKey(0);
+    setDemoWinningIndex(undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gamificationType]);
+
   // Pra raspadinha no modo demo: já inicializa um prêmio aleatório de cara, pra cliente raspar.
   useEffect(() => {
     if (!demoMode || gamificationType !== "scratch") return;

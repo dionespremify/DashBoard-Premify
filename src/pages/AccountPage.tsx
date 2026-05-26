@@ -5,6 +5,8 @@ import Button from "../components/ui/button/Button";
 import Label from "../components/form/Label";
 import Input from "../components/form/input/InputField";
 import { getAccount, updateCompany, type AccountInfo } from "../api/account";
+import { useAuth } from "../context/AuthContext";
+import TenantQRCodeCard from "../components/branding/TenantQRCodeCard";
 import { extractApiError } from "../api/client";
 
 const STATUS_LABEL: Record<string, { label: string; className: string }> = {
@@ -17,6 +19,7 @@ const STATUS_LABEL: Record<string, { label: string; className: string }> = {
 };
 
 export default function AccountPage() {
+  const { user } = useAuth();
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -107,6 +110,14 @@ export default function AccountPage() {
       <div className="max-w-3xl space-y-5">
         {/* Plano atual */}
         {account?.plan && <PlanCard plan={account.plan} trialEndsAt={account.company.trialEndsAt} />}
+
+        {/* QR Code único do estabelecimento */}
+        {user?.tenantSlug && (
+          <TenantQRCodeCard
+            slug={user.tenantSlug}
+            tenantName={user.tenantName ?? name ?? "Estabelecimento"}
+          />
+        )}
 
         {/* Form da empresa */}
         <form onSubmit={handleSubmit} className="space-y-5">

@@ -226,6 +226,7 @@ export default function WizardPage() {
                     onBack={history.length > 0 ? goBack : undefined}
                     onRestart={restart}
                     creating={false}
+                    gamificationType={branding?.gamificationType ?? "wheel"}
                   />
                 ),
               },
@@ -381,6 +382,7 @@ function WizardRecommendationView({
   onBack,
   onRestart,
   creating,
+  gamificationType,
 }: {
   recommendation: WizardRecommendation;
   dimensioning: Record<string, unknown>;
@@ -397,6 +399,7 @@ function WizardRecommendationView({
   onBack?: () => void;
   onRestart: () => void;
   creating: boolean;
+  gamificationType?: "wheel" | "scratch" | "box";
 }) {
   return (
     <div className="space-y-6">
@@ -443,6 +446,7 @@ function WizardRecommendationView({
               value={dimensioning[q.key]}
               onChange={(v) => onDimensioningChange(q.key, v)}
               siblings={dimensioning}
+              gamificationType={branding?.gamificationType ?? "wheel"}
             />
           ))}
 
@@ -505,11 +509,13 @@ function DimensionInput({
   value,
   onChange,
   siblings,
+  gamificationType,
 }: {
   question: WizardDimensionQuestion;
   value: unknown;
   onChange: (v: unknown) => void;
   siblings?: Record<string, unknown>;
+  gamificationType?: "wheel" | "scratch" | "box";
 }) {
   const placeholder = question.placeholder ?? "";
 
@@ -521,6 +527,7 @@ function DimensionInput({
           value={(value as PrizeDefinition[]) ?? []}
           onChange={(next) => onChange(next)}
           everyoneWins={(siblings?.everyone_wins as boolean) ?? true}
+          gamificationType={gamificationType}
         />
       </div>
     );

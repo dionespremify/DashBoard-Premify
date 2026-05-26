@@ -86,6 +86,32 @@ export async function registerPublicCustomer(payload: PublicRegisterRequest): Pr
   return data;
 }
 
+export interface ActiveCampaignSummary {
+  id: number;
+  name: string;
+  description?: string | null;
+  endsAt?: string | null;
+}
+
+export interface TenantCampaignsListResponse {
+  tenant: {
+    slug: string;
+    name: string;
+    logoUrl?: string | null;
+    backgroundColor?: string | null;
+    backgroundImageUrl?: string | null;
+    buttonColor?: string | null;
+    wheelTheme?: "classic" | "vegas" | "neon" | null;
+    gamificationType?: "wheel" | "scratch" | "box" | null;
+  };
+  campaigns: ActiveCampaignSummary[];
+}
+
+export async function getTenantActiveCampaigns(tenantSlug: string): Promise<TenantCampaignsListResponse> {
+  const { data } = await apiClient.get<TenantCampaignsListResponse>(`/public/${tenantSlug}/campaigns`);
+  return data;
+}
+
 export async function joinPublicCampaign(payload: PublicJoinRequest) {
   const { data } = await apiClient.post("/public/participations/join", payload);
   return data;
