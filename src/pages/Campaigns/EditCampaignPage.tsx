@@ -293,6 +293,7 @@ export default function EditCampaignPage() {
                     >
                       <div className="w-full h-full overflow-auto">
                         <CampaignMobilePage
+                          key={previewBranding.gamificationType ?? "wheel"}
                           branding={previewBranding}
                           campaign={previewDisplay}
                           interactive={false}
