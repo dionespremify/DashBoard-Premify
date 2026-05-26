@@ -18,6 +18,8 @@ import {
   type PublicParticipation,
   type PublicReward,
 } from "../../api/publicApi";
+import { submitSurvey } from "../../api/surveys";
+import SurveyForm from "../../components/gamification/SurveyForm";
 import { extractApiError } from "../../api/client";
 import PageMeta from "../../components/common/PageMeta";
 
@@ -43,6 +45,11 @@ export default function PublicCampaignPage() {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginCode, setLoginCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
+
+  // Survey state — mostrada após auth, antes de liberar a mecânica
+  const [surveyShown, setSurveyShown] = useState(false);
+  const [surveySubmitting, setSurveySubmitting] = useState(false);
+  const [bonusMessage, setBonusMessage] = useState<string | null>(null);
 
   const [rewards, setRewards] = useState<PublicReward[]>([]);
   const [participations, setParticipations] = useState<PublicParticipation[]>([]);
@@ -74,6 +81,31 @@ export default function PublicCampaignPage() {
     refreshRewards();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, phone, registered]);
+
+  async function handleSurveySubmit(answers: Record<string, unknown>) {
+    if (!slug || !phone) return;
+    setSurveySubmitting(true);
+    try {
+      const res = await submitSurvey({
+        tenantSlug: slug,
+        phone,
+        campaignId,
+        answers,
+      });
+      if (res.bonusMessage) setBonusMessage(res.bonusMessage);
+      // Recarrega rewards (pode ter ganhado bônus)
+      await refreshRewards();
+    } catch (err) {
+      console.warn("Erro ao submeter survey:", err);
+    } finally {
+      setSurveySubmitting(false);
+      setSurveyShown(true); // marca como exibida, libera mecânica
+    }
+  }
+
+  function handleSurveySkip() {
+    setSurveyShown(true);
+  }
 
   async function refreshRewards() {
     if (!slug || !phone) return;
@@ -274,12 +306,30 @@ export default function PublicCampaignPage() {
   }
 
   const pendingReward = rewards.find((r) => r.status === "pending");
+  const survey = campaign?.surveyConfig;
+  const surveyEnabled = !!survey?.enabled && (survey?.questions?.length ?? 0) > 0;
+  const showSurvey = registered && surveyEnabled && !surveyShown;
+  const mechanicLocked = !registered || showSurvey;
 
   // Slot abaixo do wheel
   const formFields = (campaign?.customerFormConfig ?? []).filter((f) => f.enabled);
   const buttonColor = branding.buttonColor || "#FF6B35";
 
-  const bottomSlot = !registered ? (
+  const bottomSlot = showSurvey && survey ? (
+    <SurveyForm
+      config={{
+        enabled: survey.enabled,
+        bonus: survey.bonus,
+        title: survey.title,
+        subtitle: survey.subtitle,
+        questions: survey.questions,
+      }}
+      buttonColor={branding.buttonColor || "#FF6B35"}
+      onSubmit={handleSurveySubmit}
+      onSkip={handleSurveySkip}
+      submitting={surveySubmitting}
+    />
+  ) : !registered ? (
     authPhase === "choose" ? (
       <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20 space-y-3">
         <p className="text-sm font-medium text-center mb-3">Pra participar, escolha:</p>
@@ -412,6 +462,11 @@ export default function PublicCampaignPage() {
       <p className="font-mono text-xl font-bold tracking-wider">{revealingReward.code.split(":").pop()}</p>
       <p className="text-xs opacity-70 mt-2">Apresente esse código no caixa pra resgatar</p>
     </div>
+  ) : bonusMessage ? (
+    <div className="bg-yellow-300/20 backdrop-blur-md border border-yellow-300/40 rounded-2xl p-5 text-center">
+      <p className="text-sm font-bold">{bonusMessage}</p>
+      <p className="text-xs opacity-80 mt-1">Toque na roleta acima pra ver seu prêmio</p>
+    </div>
   ) : (
     <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20 text-center">
       <p className="text-sm">Volte em breve! Novos prêmios aparecem aqui 🎁</p>
@@ -428,7 +483,7 @@ export default function PublicCampaignPage() {
           interactive={!!pendingReward && !revealingReward}
           onCtaClick={() => pendingReward && startReveal(pendingReward)}
           ctaLabel={pendingReward ? "🎁 Girar a roleta!" : "Girar a roleta!"}
-          hideMechanic={!registered}
+          hideMechanic={mechanicLocked}
           autoSpinOnMount={revealingReward !== null}
           winningPrizeIndex={winningIndex}
           rewardCode={revealingReward?.code}

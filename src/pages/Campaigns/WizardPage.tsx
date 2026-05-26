@@ -19,6 +19,8 @@ import PrizePoolEditor, { type PrizeDefinition } from "../../components/prizes/P
 import { uploadImage } from "../../api/uploads";
 import Tabs from "../../components/common/Tabs";
 import CustomerFormConfigEditor from "../../components/campaigns/CustomerFormConfigEditor";
+import SurveyConfigEditor from "../../components/campaigns/SurveyConfigEditor";
+import { DEFAULT_SURVEY_CONFIG, type SurveyConfig } from "../../api/surveys";
 import CampaignMobilePage, {
   type CampaignBranding,
   type CampaignDisplay,
@@ -43,6 +45,7 @@ export default function WizardPage() {
   const [endsAt, setEndsAt] = useState("");
   const [activateImmediately, setActivateImmediately] = useState(true);
   const [customerFormConfig, setCustomerFormConfig] = useState<CustomerFormField[]>(DEFAULT_CUSTOMER_FORM);
+  const [surveyConfig, setSurveyConfig] = useState<SurveyConfig>(DEFAULT_SURVEY_CONFIG);
 
   // branding pro preview
   const [branding, setBranding] = useState<Branding | null>(null);
@@ -170,6 +173,7 @@ export default function WizardPage() {
         wizardAnswers: answers,
         dimensioning,
         customerFormConfig,
+        surveyConfig,
         activateImmediately,
       });
       navigate(`/campanhas/${created.id}`, { replace: true });
@@ -241,6 +245,22 @@ export default function WizardPage() {
                       value={customerFormConfig}
                       onChange={setCustomerFormConfig}
                     />
+                  </div>
+                ),
+              },
+              {
+                key: "survey",
+                label: "Pesquisa",
+                icon: "📊",
+                content: (
+                  <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+                    <h2 className="mb-1 text-lg font-medium text-gray-800 dark:text-white/90">
+                      Pesquisa de satisfação
+                    </h2>
+                    <p className="mb-5 text-sm text-gray-500 dark:text-gray-400">
+                      Opcional. Mostra após o cadastro, antes da roleta. Você decide se quem responder ganha bônus.
+                    </p>
+                    <SurveyConfigEditor value={surveyConfig} onChange={setSurveyConfig} />
                   </div>
                 ),
               },

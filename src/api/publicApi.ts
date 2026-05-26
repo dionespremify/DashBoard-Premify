@@ -22,6 +22,20 @@ export interface PublicCampaign {
     wheelTheme?: "classic" | "vegas" | "neon" | null;
   };
   customerFormConfig?: { key: string; enabled: boolean; required: boolean }[];
+  surveyConfig?: {
+    enabled: boolean;
+    bonus: "none" | "extra_spin" | "extra_stamp";
+    title?: string | null;
+    subtitle?: string | null;
+    questions: {
+      id: string;
+      type: "rating" | "multiple_choice" | "text";
+      label: string;
+      required: boolean;
+      options?: string[] | null;
+      max?: number | null;
+    }[];
+  } | null;
 }
 
 export interface PublicRegisterRequest {

@@ -1,5 +1,6 @@
 import { apiClient } from "./client";
 import type { WizardAnswers } from "./wizard";
+import type { SurveyConfig } from "./surveys";
 
 export interface MechanicResponse {
   id: number;
@@ -81,6 +82,7 @@ export interface Campaign {
   mechanics: MechanicResponse[];
   blueprint?: BlueprintEditContext | null;
   customerFormConfig?: CustomerFormField[];
+  surveyConfig?: SurveyConfig | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -92,6 +94,7 @@ export interface UpdateCampaignRequest {
   endsAt?: string;
   dimensioning: Record<string, unknown>;
   customerFormConfig?: CustomerFormField[];
+  surveyConfig?: SurveyConfig;
 }
 
 export interface CreateCampaignRequest {
@@ -103,6 +106,7 @@ export interface CreateCampaignRequest {
   wizardAnswers: WizardAnswers;
   dimensioning: Record<string, unknown>;
   customerFormConfig?: CustomerFormField[];
+  surveyConfig?: SurveyConfig;
   activateImmediately: boolean;
 }
 
