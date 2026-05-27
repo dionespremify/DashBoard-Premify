@@ -6,16 +6,23 @@ import { BlendFunction } from "postprocessing";
 import * as THREE from "three";
 import type { PrizeDefinition } from "../prizes/PrizePoolEditor";
 
-// URLs dos assets baixados em /public/games/penalty/
+// URLs dos assets em /public/games/penalty/
 const ASSETS = {
-  keeperModel: "/games/penalty/Soldier.glb",
+  keeperModel: "/games/penalty/keeper.glb",
   stadiumHDR: "/games/penalty/stadium.hdr",
   grassColor: "/games/penalty/grass_color.jpg",
   grassNormal: "/games/penalty/grass_normal.jpg",
 };
 
-// Pré-carrega o modelo
+// Pré-carrega o modelo do goleiro
 useGLTF.preload(ASSETS.keeperModel);
+
+// Escala e altura do modelo do goleiro — ajuste conforme o GLB
+const KEEPER_SCALE = 1.8;
+const KEEPER_Y = 0;
+// Rotação Y inicial do goleiro (radianos): ajusta se o modelo veio orientado errado
+// 0 = frente | Math.PI/2 = 90° dir | Math.PI = costas | -Math.PI/2 = 90° esq
+const KEEPER_ROTATION_Y = -Math.PI / 2;
 
 interface Props {
   prizes: PrizeDefinition[];
@@ -616,68 +623,26 @@ function Keeper({
   const currentAction = useRef<string | null>(null);
   const swing = useRef(0);
 
-  // Configurações: ativa sombras + customiza materiais pra ficar com cara de goleiro
+  // Ativa sombras nos meshes do modelo (cores e texturas vêm prontas do GLB)
   useEffect(() => {
     if (!scene) return;
-    // Cores de uniforme de goleiro clássico
-    const SHIRT_COLOR = new THREE.Color("#16a34a");    // verde vibrante
-    const ACCENT_COLOR = new THREE.Color("#FBBF24");   // amarelo das luvas
-    const SHORTS_COLOR = new THREE.Color("#0c1322");   // preto/grafite
-
     scene.traverse((obj: THREE.Object3D) => {
       const mesh = obj as THREE.Mesh;
       if (!mesh.isMesh) return;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
-
-      // Tinge o material com cor de goleiro (clona pra não afetar cache global do useGLTF)
+      // Boost de envMapIntensity pra refletir o HDR de estádio
       const mat = mesh.material as THREE.MeshStandardMaterial;
-      if (mat && !mesh.userData._tinted) {
-        const cloned = mat.clone() as THREE.MeshStandardMaterial;
-        const name = (mesh.name || "").toLowerCase();
-        // Heurística pelos nomes comuns no Soldier rig
-        if (/head|hand|skin|face/.test(name)) {
-          // Mantém pele original
-        } else if (/leg|pant|short/.test(name)) {
-          cloned.color = SHORTS_COLOR;
-          cloned.map = null;
-        } else {
-          // Default: tronco/braços/etc → cor de camisa
-          cloned.color = SHIRT_COLOR;
-          cloned.map = null;
-          cloned.roughness = 0.7;
-          cloned.metalness = 0.05;
-        }
-        cloned.envMapIntensity = 1.0;
-        mesh.material = cloned;
-        mesh.userData._tinted = true;
-      }
-    });
-
-    // Adiciona luvas amarelas como overlay (esferas posicionadas nas mãos do rig se acharmos)
-    // Procura bones/nodes de "Hand" e adiciona uma esfera filha
-    scene.traverse((obj: THREE.Object3D) => {
-      const n = (obj.name || "").toLowerCase();
-      if ((/hand/.test(n) || /wrist/.test(n)) && obj.children.every((c) => c.userData._glove !== true)) {
-        const glove = new THREE.Mesh(
-          new THREE.SphereGeometry(0.07, 16, 12),
-          new THREE.MeshStandardMaterial({
-            color: ACCENT_COLOR,
-            roughness: 0.5,
-            metalness: 0.1,
-          }),
-        );
-        glove.castShadow = true;
-        glove.userData._glove = true;
-        obj.add(glove);
+      if (mat && "envMapIntensity" in mat) {
+        mat.envMapIntensity = 1.1;
       }
     });
   }, [scene]);
 
-  // Toca animação inicial (Idle se existir, senão a primeira disponível)
+  // Se o modelo tiver animações embutidas, toca a primeira (idle). Senão, pula.
   useEffect(() => {
     if (!actions || names.length === 0) return;
-    const idleName = names.find((n) => /idle/i.test(n)) ?? names[0];
+    const idleName = names.find((n) => /idle|stand/i.test(n)) ?? names[0];
     if (idleName && actions[idleName]) {
       actions[idleName].reset().fadeIn(0.2).play();
       currentAction.current = idleName;
@@ -689,31 +654,6 @@ function Keeper({
     };
   }, [actions, names]);
 
-  // Troca pra animação "Run" durante o mergulho
-  useEffect(() => {
-    if (!actions || names.length === 0) return;
-    if (phase === "kicking") {
-      const moveName = names.find((n) => /run|walk|jog/i.test(n));
-      if (moveName && actions[moveName] && currentAction.current !== moveName) {
-        if (currentAction.current && actions[currentAction.current]) {
-          actions[currentAction.current]!.fadeOut(0.15);
-        }
-        actions[moveName].reset().fadeIn(0.15).play();
-        currentAction.current = moveName;
-      }
-    } else {
-      const idleName = names.find((n) => /idle/i.test(n)) ?? names[0];
-      if (idleName && actions[idleName] && currentAction.current !== idleName) {
-        if (currentAction.current && actions[currentAction.current]) {
-          actions[currentAction.current]!.fadeOut(0.2);
-        }
-        actions[idleName].reset().fadeIn(0.2).play();
-        currentAction.current = idleName;
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
-
   useFrame(() => {
     if (!group.current) return;
     swing.current += 0.04;
@@ -721,7 +661,7 @@ function Keeper({
     if (!st || phase !== "kicking") {
       // Idle no centro do gol, olhando pra câmera
       group.current.position.set(0, 0, -2.5);
-      group.current.rotation.set(0, Math.PI, Math.sin(swing.current) * 0.03);
+      group.current.rotation.set(0, KEEPER_ROTATION_Y, Math.sin(swing.current) * 0.03);
       return;
     }
     const t = Math.min(1, (performance.now() - st.t0) / st.duration);
@@ -732,16 +672,16 @@ function Keeper({
       st.keeperStart[1] + (st.keeperEnd[1] - st.keeperStart[1]) * ke,
       st.keeperStart[2] + (st.keeperEnd[2] - st.keeperStart[2]) * ke,
     );
-    // Inclina o corpo na direção do mergulho (rota Z) + olha pra câmera (rota Y)
+    // Inclina o corpo na direção do mergulho (rota Z) + mantém orientação frontal (rota Y)
     group.current.rotation.set(
       st.keeperRot[0] * ke,
-      Math.PI + st.keeperRot[1] * ke,
+      KEEPER_ROTATION_Y + st.keeperRot[1] * ke,
       st.keeperRot[2] * ke,
     );
   });
 
   return (
-    <group ref={group} position={[0, 0, -2.5]} rotation={[0, Math.PI, 0]} scale={0.8}>
+    <group ref={group} position={[0, KEEPER_Y, -2.5]} rotation={[0, KEEPER_ROTATION_Y, 0]} scale={KEEPER_SCALE}>
       <primitive object={scene} />
     </group>
   );
