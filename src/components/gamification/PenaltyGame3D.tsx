@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type MutableRefObject } from "react";
 import { Canvas, useFrame, useLoader } from "@react-three/fiber";
-import { PerspectiveCamera, Stars, Environment, useGLTF, useAnimations, useTexture, ContactShadows, Line } from "@react-three/drei";
+import { PerspectiveCamera, Stars, Environment, useGLTF, useAnimations, useFBX, useTexture, ContactShadows, Line } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette, ChromaticAberration } from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
 import * as THREE from "three";
@@ -9,6 +9,10 @@ import type { PrizeDefinition } from "../prizes/PrizePoolEditor";
 // URLs dos assets em /public/games/penalty/
 const ASSETS = {
   keeperModel: "/games/penalty/keeper.glb",
+  keeperIdle: "/games/penalty/keeper_idle.fbx",
+  keeperDive: "/games/penalty/keeper_dive.fbx",
+  keeperCatch: "/games/penalty/keeper_catch.fbx",
+  keeperStandUp: "/games/penalty/keeper_standup.fbx",
   stadiumHDR: "/games/penalty/stadium.hdr",
   grassColor: "/games/penalty/grass_color.jpg",
   grassNormal: "/games/penalty/grass_normal.jpg",
@@ -17,12 +21,12 @@ const ASSETS = {
 // Pré-carrega o modelo do goleiro
 useGLTF.preload(ASSETS.keeperModel);
 
-// Escala e altura do modelo do goleiro — ajuste conforme o GLB
-const KEEPER_SCALE = 1.8;
+// Escala e altura do modelo do goleiro (Mixamo FBX vem em CENTÍMETROS — base é ~0.012)
+const KEEPER_SCALE = 0.022;
 const KEEPER_Y = 0;
 // Rotação Y inicial do goleiro (radianos): ajusta se o modelo veio orientado errado
 // 0 = frente | Math.PI/2 = 90° dir | Math.PI = costas | -Math.PI/2 = 90° esq
-const KEEPER_ROTATION_Y = -Math.PI / 2;
+const KEEPER_ROTATION_Y = 0;
 
 interface Props {
   prizes: PrizeDefinition[];
@@ -618,12 +622,48 @@ function Keeper({
   phase: Phase;
 }) {
   const group = useRef<THREE.Group>(null);
-  const { scene, animations } = useGLTF(ASSETS.keeperModel) as any;
-  const { actions, names } = useAnimations(animations, group);
+
+  // Carrega o modelo principal do FBX idle (vem com Y-Bot Mixamo dentro)
+  const idleFbx = useFBX(ASSETS.keeperIdle);
+  const diveFbx = useFBX(ASSETS.keeperDive);
+  const catchFbx = useFBX(ASSETS.keeperCatch);
+  const standUpFbx = useFBX(ASSETS.keeperStandUp);
+
+  // Usa o FBX idle direto como modelo (sem clonar — clone profundo quebra skinning)
+  const scene = idleFbx;
+
+  // Coleta os clips das outras animações (mesmo rig, bones batem)
+  const clips = useMemo(() => {
+    const out: THREE.AnimationClip[] = [];
+    if (idleFbx?.animations?.[0]) {
+      const c = idleFbx.animations[0].clone();
+      c.name = "Idle";
+      out.push(c);
+    }
+    if (diveFbx?.animations?.[0]) {
+      const c = diveFbx.animations[0].clone();
+      c.name = "Dive";
+      out.push(c);
+    }
+    if (catchFbx?.animations?.[0]) {
+      const c = catchFbx.animations[0].clone();
+      c.name = "Catch";
+      out.push(c);
+    }
+    if (standUpFbx?.animations?.[0]) {
+      const c = standUpFbx.animations[0].clone();
+      c.name = "StandUp";
+      out.push(c);
+    }
+    return out;
+  }, [idleFbx, diveFbx, catchFbx, standUpFbx]);
+
+  // Aplica as clips no group (drei detecta os bones automaticamente dentro do group)
+  const { actions } = useAnimations(clips, group);
   const currentAction = useRef<string | null>(null);
   const swing = useRef(0);
 
-  // Ativa sombras nos meshes do modelo (cores e texturas vêm prontas do GLB)
+  // Ativa sombras nos meshes (mantém os materiais originais do FBX pra preservar skinning)
   useEffect(() => {
     if (!scene) return;
     scene.traverse((obj: THREE.Object3D) => {
@@ -631,28 +671,57 @@ function Keeper({
       if (!mesh.isMesh) return;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
-      // Boost de envMapIntensity pra refletir o HDR de estádio
-      const mat = mesh.material as THREE.MeshStandardMaterial;
-      if (mat && "envMapIntensity" in mat) {
-        mat.envMapIntensity = 1.1;
-      }
+      mesh.frustumCulled = false;
+      // Só ajusta envMapIntensity se for MeshStandardMaterial (sem converter)
+      const mat = mesh.material as THREE.MeshStandardMaterial | THREE.MeshStandardMaterial[];
+      const apply = (m: THREE.MeshStandardMaterial) => {
+        if (m && "envMapIntensity" in m) m.envMapIntensity = 1.0;
+      };
+      if (Array.isArray(mat)) mat.forEach(apply);
+      else if (mat) apply(mat);
     });
   }, [scene]);
 
-  // Se o modelo tiver animações embutidas, toca a primeira (idle). Senão, pula.
+  // Toca Idle quando montar
   useEffect(() => {
-    if (!actions || names.length === 0) return;
-    const idleName = names.find((n) => /idle|stand/i.test(n)) ?? names[0];
-    if (idleName && actions[idleName]) {
-      actions[idleName].reset().fadeIn(0.2).play();
-      currentAction.current = idleName;
-    }
+    if (!actions.Idle) return;
+    actions.Idle.reset().fadeIn(0.25).play();
+    currentAction.current = "Idle";
     return () => {
       if (currentAction.current && actions[currentAction.current]) {
         actions[currentAction.current]?.fadeOut(0.2);
       }
     };
-  }, [actions, names]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actions.Idle]);
+
+  // Troca animação conforme a fase + direção do mergulho
+  useEffect(() => {
+    if (!actions || phase !== "kicking") {
+      // Volta pra idle
+      if (currentAction.current && currentAction.current !== "Idle" && actions.Idle) {
+        actions[currentAction.current]?.fadeOut(0.25);
+        actions.Idle.reset().fadeIn(0.3).play();
+        currentAction.current = "Idle";
+      }
+      return;
+    }
+    const st = animStateRef.current;
+    if (!st) return;
+    // Se vai pular pro alto (travessão) usa Catch (pega no alto)
+    // Senão usa Dive (mergulho lateral)
+    const isJumpUp = Math.abs(st.keeperRot[2]) < 0.05 && st.keeperEnd[1] > 1.2;
+    const target = isJumpUp ? "Catch" : "Dive";
+    if (currentAction.current !== target && actions[target]) {
+      if (currentAction.current && actions[currentAction.current]) {
+        actions[currentAction.current]!.fadeOut(0.15);
+      }
+      actions[target].reset().fadeIn(0.15).setLoop(THREE.LoopOnce, 1).play();
+      actions[target].clampWhenFinished = true;
+      currentAction.current = target;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   useFrame(() => {
     if (!group.current) return;
@@ -680,6 +749,7 @@ function Keeper({
     );
   });
 
+  if (!scene) return null;
   return (
     <group ref={group} position={[0, KEEPER_Y, -2.5]} rotation={[0, KEEPER_ROTATION_Y, 0]} scale={KEEPER_SCALE}>
       <primitive object={scene} />
