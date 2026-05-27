@@ -271,13 +271,14 @@ export default function PublicCampaignPage() {
     setWinningIndex(idx);
   }
 
-  // Pra raspadinha: assim que houver reward pendente, já mostra raspável (sem botão CTA inicial).
+  // Pra raspadinha/plinko: assim que houver reward pendente, já prepara a mecânica
+  // (sem botão CTA inicial — a interação acontece direto no componente).
   useEffect(() => {
     if (!campaign) return;
     const pending = rewards.find((r) => r.status === "pending");
     if (!pending) return;
     const tenantGamif = campaign.tenant.gamificationType;
-    if (tenantGamif !== "scratch") return;
+    if (tenantGamif !== "scratch" && tenantGamif !== "plinko") return;
     if (winningIndex != null) return;
     startReveal(pending);
     // eslint-disable-next-line react-hooks/exhaustive-deps

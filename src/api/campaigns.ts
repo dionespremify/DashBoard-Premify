@@ -78,7 +78,7 @@ export interface ParticipationLimitConfig {
   count?: number | null;
 }
 
-export type GamificationType = "wheel" | "scratch" | "box";
+export type GamificationType = "wheel" | "scratch" | "box" | "plinko";
 
 export interface Campaign {
   id: number;

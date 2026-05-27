@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import WheelSVG, { type WheelTheme } from "./WheelSVG";
 import ScratchCard from "./ScratchCard";
+import PlinkoGame from "./PlinkoGame";
 import CelebrationModal from "./CelebrationModal";
 import StampCard from "./StampCard";
 import type { PrizeDefinition } from "../prizes/PrizePoolEditor";
 
-export type GamificationType = "wheel" | "scratch" | "box";
+export type GamificationType = "wheel" | "scratch" | "box" | "plinko";
 
 export interface CampaignBranding {
   tenantSlug?: string;
@@ -94,8 +95,10 @@ export default function CampaignMobilePage({
   demoMode = false,
   hideMechanic = false,
 }: Props) {
-  // Encontra qualquer mecânica de prize-pool (wheel | scratch | box) — todas usam o mesmo schema.
-  const wheel = campaign.mechanics.find((m) => m.type === "wheel" || m.type === "scratch" || m.type === "box");
+  // Encontra qualquer mecânica de prize-pool — todas usam o mesmo schema.
+  const wheel = campaign.mechanics.find(
+    (m) => m.type === "wheel" || m.type === "scratch" || m.type === "box" || m.type === "plinko",
+  );
   const prizes = useMemo(
     () => (wheel?.config?.prizes ?? []) as PrizeDefinition[],
     [wheel],
@@ -128,9 +131,11 @@ export default function CampaignMobilePage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gamificationType]);
 
-  // Pra raspadinha no modo demo: já inicializa um prêmio aleatório de cara, pra cliente raspar.
+  // Pra raspadinha/plinko no modo demo: já inicializa um prêmio aleatório de cara,
+  // pra cliente interagir (raspar ou soltar a bolinha).
   useEffect(() => {
-    if (!demoMode || gamificationType !== "scratch") return;
+    if (!demoMode) return;
+    if (gamificationType !== "scratch" && gamificationType !== "plinko") return;
     if (demoWinningIndex != null) return;
     const visible = prizes.filter((p) => p.type !== "try_again");
     if (visible.length === 0) return;
@@ -224,6 +229,33 @@ export default function CampaignMobilePage({
             >
               {ctaLabel}
             </button>
+          </div>
+        )}
+
+        {!hideMechanic && wheel && gamificationType === "plinko" && (
+          <div className="flex flex-col items-center mb-6">
+            <PlinkoGame
+              key={demoSpinKey > 0 ? `demo-${demoSpinKey}` : "live"}
+              prizes={prizes}
+              buttonColor={buttonColor}
+              winningPrizeIndex={demoMode ? demoWinningIndex : winningPrizeIndex}
+              autoReveal={!demoMode && autoSpinOnMount}
+              size={320}
+              onRevealed={(p) => {
+                setRevealed(p);
+                onSpinEnd?.(p);
+              }}
+            />
+            {demoMode && (
+              <button
+                type="button"
+                onClick={startDemoSpin}
+                className="mt-3 px-6 py-2 rounded-full font-semibold text-white shadow hover:scale-105 transition-transform text-sm"
+                style={{ backgroundColor: buttonColor }}
+              >
+                🔄 Jogar de novo (preview)
+              </button>
+            )}
           </div>
         )}
 

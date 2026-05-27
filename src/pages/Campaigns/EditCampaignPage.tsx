@@ -219,7 +219,7 @@ export default function EditCampaignPage() {
                   value={dimensioning[q.key]}
                   onChange={(v) => setDimensioning((d) => ({ ...d, [q.key]: v }))}
                   siblings={dimensioning}
-                  gamificationType={branding?.gamificationType ?? "wheel"}
+                  gamificationType={(brandingDraft ?? branding)?.gamificationType ?? "wheel"}
                 />
               ))}
             </div>

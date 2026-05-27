@@ -188,15 +188,17 @@ export default function PrizePoolEditor({
                   onChange={(v) => updatePrize(idx, { imageUrl: v })}
                 />
 
-                {gamificationType === "wheel" && (
+                {(gamificationType === "wheel" || gamificationType === "plinko") && (
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-brand-50 border border-brand-200 dark:bg-brand-500/10 dark:border-brand-500/30">
-                    <span className="text-base">🎡</span>
+                    <span className="text-base">{gamificationType === "wheel" ? "🎡" : "🎯"}</span>
                     <div className="flex-1">
                       <div className="text-sm font-medium text-gray-800 dark:text-white/90">
-                        Aparece em {slicesCount} {slicesCount === 1 ? "fatia" : "fatias"} da roleta
+                        {gamificationType === "wheel"
+                          ? `Aparece em ${slicesCount} ${slicesCount === 1 ? "fatia" : "fatias"} da roleta`
+                          : `Aparece em ${slicesCount} ${slicesCount === 1 ? "slot" : "slots"} do plinko`}
                       </div>
                       <div className="text-xs text-gray-600 dark:text-gray-400">
-                        Apenas visual — não muda as chances de sair. Use pra encher a roleta sem duplicar o prêmio.
+                        Apenas visual — não muda as chances de sair. Use pra balancear a quantidade de slots/fatias.
                       </div>
                     </div>
                     <div className="flex items-center gap-1">

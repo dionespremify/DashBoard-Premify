@@ -23,6 +23,13 @@ export const GAMIFICATION_OPTIONS: {
     available: true,
   },
   {
+    value: "plinko",
+    label: "Plinko",
+    icon: "🎯",
+    description: "O cliente solta uma bolinha que ricocheteia entre pinos até cair num prêmio.",
+    available: true,
+  },
+  {
     value: "box",
     label: "Caixa surpresa",
     icon: "📦",
