@@ -8,7 +8,7 @@ import Input from "../../components/form/input/InputField";
 import { extractApiError } from "../../api/client";
 import { DEFAULT_CUSTOMER_FORM, getCampaign, updateCampaign, type Campaign, type CustomerFormField, type ParticipationLimitConfig } from "../../api/campaigns";
 import ParticipationLimitEditor from "../../components/campaigns/ParticipationLimitEditor";
-import { getBranding, type Branding } from "../../api/branding";
+import { getBranding, updateBranding, type Branding } from "../../api/branding";
 import BrandingForm from "../../components/branding/BrandingForm";
 import type { WizardDimensionQuestion } from "../../api/wizard";
 import PrizePoolEditor, { type PrizeDefinition } from "../../components/prizes/PrizePoolEditor";
@@ -96,8 +96,8 @@ export default function EditCampaignPage() {
     return list as unknown as WizardDimensionQuestion[];
   }, [campaign]);
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  async function handleSubmit(e?: FormEvent<HTMLFormElement> | React.MouseEvent) {
+    e?.preventDefault?.();
     if (saving || !campaign) return;
     if (!name.trim()) {
       setError("Dê um nome pra campanha");
@@ -107,6 +107,20 @@ export default function EditCampaignPage() {
     setSaving(true);
     setError(null);
     try {
+      // 1. Salva a personalização (branding) — se houve mudança via draft
+      if (brandingDraft) {
+        const updatedBranding = await updateBranding({
+          logoUrl: brandingDraft.logoUrl ?? null,
+          backgroundColor: brandingDraft.backgroundColor ?? null,
+          backgroundImageUrl: brandingDraft.backgroundImageUrl ?? null,
+          buttonColor: brandingDraft.buttonColor ?? null,
+          wheelTheme: brandingDraft.wheelTheme ?? null,
+          gamificationType: brandingDraft.gamificationType ?? null,
+        });
+        setBranding(updatedBranding);
+      }
+
+      // 2. Salva a campanha
       // Se o limite estiver ativo, forçamos CPF como required no formulário.
       const finalFormConfig = participationLimit.enabled
         ? ensureCpfRequired(customerFormConfig)
@@ -179,7 +193,7 @@ export default function EditCampaignPage() {
 
 
   const formTab = (
-    <form onSubmit={handleSubmit} className="max-w-3xl mx-auto space-y-5">
+    <div className="max-w-3xl mx-auto space-y-5">
         <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
           <h2 className="mb-4 text-lg font-medium text-gray-800 dark:text-white/90">Informações básicas</h2>
           <div className="space-y-4">
@@ -246,22 +260,7 @@ export default function EditCampaignPage() {
           </div>
         ) : null}
 
-        {error && (
-          <div className="p-3 text-sm rounded-lg bg-error-50 text-error-700 border border-error-200 dark:bg-error-500/10 dark:text-error-300 dark:border-error-500/30">
-            {error}
-          </div>
-        )}
-
-        <div className="flex items-center justify-between">
-          <Link
-            to={`/campanhas/${campaign.id}`}
-            className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-          >
-            ← Cancelar
-          </Link>
-          <Button disabled={saving}>{saving ? "Salvando…" : "Salvar alterações"}</Button>
-        </div>
-      </form>
+      </div>
   );
 
   return (
@@ -270,6 +269,26 @@ export default function EditCampaignPage() {
       <PageBreadcrumb pageTitle={`Editar: ${campaign.name}`} />
 
       <div className="max-w-4xl mx-auto">
+        {/* Barra de ações fixa — visível em todas as abas */}
+        <div className="sticky top-0 z-10 -mx-2 mb-4 px-2 py-3 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-3">
+          <Link
+            to={`/campanhas/${campaign.id}`}
+            className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+          >
+            ← Cancelar
+          </Link>
+          <Button onClick={handleSubmit} disabled={saving}>
+            {saving ? "Salvando…" : "💾 Salvar tudo"}
+          </Button>
+        </div>
+
+        {/* Mensagem de erro global */}
+        {error && (
+          <div className="mb-4 p-3 text-sm rounded-lg bg-error-50 text-error-700 border border-error-200 dark:bg-error-500/10 dark:text-error-300 dark:border-error-500/30">
+            {error}
+          </div>
+        )}
+
         <Tabs
           tabs={[
             {
@@ -282,6 +301,7 @@ export default function EditCampaignPage() {
                     onSaved={setBranding}
                     onDraftChange={setBrandingDraft}
                     showGlobalWarning
+                    hideSaveButton
                   />
                   <div className="lg:sticky lg:top-4 lg:self-start">
                     <div className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">

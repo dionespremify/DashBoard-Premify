@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import WheelSVG, { type WheelTheme } from "./WheelSVG";
 import ScratchCard from "./ScratchCard";
 import PlinkoGame from "./PlinkoGame";
+import PenaltyGame3D from "./PenaltyGame3D";
+import MinefieldGame from "./MinefieldGame";
 import CelebrationModal from "./CelebrationModal";
 import StampCard from "./StampCard";
 import type { PrizeDefinition } from "../prizes/PrizePoolEditor";
 
-export type GamificationType = "wheel" | "scratch" | "box" | "plinko";
+export type GamificationType = "wheel" | "scratch" | "plinko" | "penalty";
 
 export interface CampaignBranding {
   tenantSlug?: string;
@@ -97,7 +99,7 @@ export default function CampaignMobilePage({
 }: Props) {
   // Encontra qualquer mecânica de prize-pool — todas usam o mesmo schema.
   const wheel = campaign.mechanics.find(
-    (m) => m.type === "wheel" || m.type === "scratch" || m.type === "box" || m.type === "plinko",
+    (m) => m.type === "wheel" || m.type === "scratch" || m.type === "plinko" || m.type === "penalty",
   );
   const prizes = useMemo(
     () => (wheel?.config?.prizes ?? []) as PrizeDefinition[],
@@ -131,11 +133,11 @@ export default function CampaignMobilePage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gamificationType]);
 
-  // Pra raspadinha/plinko no modo demo: já inicializa um prêmio aleatório de cara,
-  // pra cliente interagir (raspar ou soltar a bolinha).
+  // Pra raspadinha/plinko/penalty no modo demo: já inicializa um prêmio aleatório de cara,
+  // pra cliente interagir (raspar/soltar a bolinha/chutar).
   useEffect(() => {
     if (!demoMode) return;
-    if (gamificationType !== "scratch" && gamificationType !== "plinko") return;
+    if (gamificationType !== "scratch" && gamificationType !== "plinko" && gamificationType !== "penalty" && gamificationType !== "flip") return;
     if (demoWinningIndex != null) return;
     const visible = prizes.filter((p) => p.type !== "try_again");
     if (visible.length === 0) return;
@@ -232,6 +234,61 @@ export default function CampaignMobilePage({
           </div>
         )}
 
+        {!hideMechanic && wheel && gamificationType === "flip" && (
+          <div className="flex flex-col items-center mb-6 w-full">
+            <MinefieldGame
+              key={demoSpinKey > 0 ? `demo-${demoSpinKey}` : "live"}
+              prizes={prizes}
+              buttonColor={buttonColor}
+              logoUrl={branding.logoUrl}
+              everyoneWins={!!wheel?.config?.everyone_wins}
+              winningPrizeIndex={demoMode ? demoWinningIndex : winningPrizeIndex}
+              autoReveal={false}
+              onRevealed={(p) => {
+                setRevealed(p);
+                onSpinEnd?.(p);
+              }}
+            />
+            {demoMode && (
+              <button
+                type="button"
+                onClick={startDemoSpin}
+                className="mt-3 px-6 py-2 rounded-full font-semibold text-white shadow hover:scale-105 transition-transform text-sm"
+                style={{ backgroundColor: buttonColor }}
+              >
+                🔄 Jogar de novo (preview)
+              </button>
+            )}
+          </div>
+        )}
+
+        {!hideMechanic && wheel && gamificationType === "penalty" && (
+          <div className="flex flex-col items-center mb-6">
+            <PenaltyGame3D
+              key={demoSpinKey > 0 ? `demo-${demoSpinKey}` : "live"}
+              prizes={prizes}
+              buttonColor={buttonColor}
+              winningPrizeIndex={demoMode ? demoWinningIndex : winningPrizeIndex}
+              autoReveal={false}
+              size={320}
+              onRevealed={(p) => {
+                setRevealed(p);
+                onSpinEnd?.(p);
+              }}
+            />
+            {demoMode && (
+              <button
+                type="button"
+                onClick={startDemoSpin}
+                className="mt-3 px-6 py-2 rounded-full font-semibold text-white shadow hover:scale-105 transition-transform text-sm"
+                style={{ backgroundColor: buttonColor }}
+              >
+                🔄 Cobrar de novo (preview)
+              </button>
+            )}
+          </div>
+        )}
+
         {!hideMechanic && wheel && gamificationType === "plinko" && (
           <div className="flex flex-col items-center mb-6">
             <PlinkoGame
@@ -239,7 +296,7 @@ export default function CampaignMobilePage({
               prizes={prizes}
               buttonColor={buttonColor}
               winningPrizeIndex={demoMode ? demoWinningIndex : winningPrizeIndex}
-              autoReveal={!demoMode && autoSpinOnMount}
+              autoReveal={false}
               size={320}
               onRevealed={(p) => {
                 setRevealed(p);

@@ -261,7 +261,7 @@ export default function PublicCampaignPage() {
   function startReveal(reward: PublicReward) {
     if (!campaign) return;
     const prizeId = extractPrizeIdFromCode(reward.code);
-    const mech = campaign.mechanics.find((m) => m.type === "wheel" || m.type === "scratch" || m.type === "box");
+    const mech = campaign.mechanics.find((m) => m.type === "wheel" || m.type === "scratch" || m.type === "plinko" || m.type === "penalty");
     const prizes = ((mech?.config as { prizes?: PrizeDefinition[] } | undefined)?.prizes ?? []).filter(
       (p) => p.type !== "try_again",
     );
@@ -271,14 +271,14 @@ export default function PublicCampaignPage() {
     setWinningIndex(idx);
   }
 
-  // Pra raspadinha/plinko: assim que houver reward pendente, já prepara a mecânica
+  // Pra raspadinha/plinko/penalty: assim que houver reward pendente, já prepara a mecânica
   // (sem botão CTA inicial — a interação acontece direto no componente).
   useEffect(() => {
     if (!campaign) return;
     const pending = rewards.find((r) => r.status === "pending");
     if (!pending) return;
     const tenantGamif = campaign.tenant.gamificationType;
-    if (tenantGamif !== "scratch" && tenantGamif !== "plinko") return;
+    if (tenantGamif !== "scratch" && tenantGamif !== "plinko" && tenantGamif !== "penalty" && tenantGamif !== "flip") return;
     if (winningIndex != null) return;
     startReveal(pending);
     // eslint-disable-next-line react-hooks/exhaustive-deps

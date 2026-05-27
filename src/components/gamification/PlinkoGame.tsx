@@ -408,8 +408,6 @@ export default function PlinkoGame({
           rx="14"
         />
 
-        {/* Luzes piscando ao redor (cassino) — distribuídas no perímetro */}
-        <BorderLights buttonColor={buttonColor} />
 
         {/* Linha pontilhada de mira (durante aim) */}
         {phase === "aim" && (
@@ -424,11 +422,31 @@ export default function PlinkoGame({
           />
         )}
 
-        {/* Pinos */}
+        {/* Pinos com halo prata piscando sutil */}
         {pins.map((pin, idx) => {
           const isHit = hitPins.has(idx);
+          const delay = (idx * 0.12) % 1.8;
           return (
             <g key={idx}>
+              {/* Halo prata piscando atrás de cada pino */}
+              {!isHit && (
+                <circle cx={pin.x} cy={pin.y} r={PIN_RADIUS * 1.6} fill="#E5E7EB" opacity="0.2">
+                  <animate
+                    attributeName="opacity"
+                    values="0.1;0.45;0.1"
+                    dur="1.6s"
+                    begin={`${delay}s`}
+                    repeatCount="indefinite"
+                  />
+                  <animate
+                    attributeName="r"
+                    values={`${PIN_RADIUS * 1.2};${PIN_RADIUS * 1.8};${PIN_RADIUS * 1.2}`}
+                    dur="1.6s"
+                    begin={`${delay}s`}
+                    repeatCount="indefinite"
+                  />
+                </circle>
+              )}
               {isHit && (
                 <circle cx={pin.x} cy={pin.y} r={PIN_RADIUS * 4} fill="url(#pinGlow)" />
               )}
@@ -437,12 +455,12 @@ export default function PlinkoGame({
                 cy={pin.y}
                 r={isHit ? PIN_RADIUS * 1.3 : PIN_RADIUS}
                 fill="url(#pinGradient)"
-                stroke="rgba(255,255,255,0.4)"
+                stroke="rgba(255,255,255,0.5)"
                 strokeWidth="0.5"
                 style={{ transition: "r 0.2s" }}
               />
               {/* Highlight especular */}
-              <circle cx={pin.x - 1} cy={pin.y - 1} r={PIN_RADIUS * 0.4} fill="rgba(255,255,255,0.6)" />
+              <circle cx={pin.x - 1} cy={pin.y - 1} r={PIN_RADIUS * 0.4} fill="rgba(255,255,255,0.7)" />
             </g>
           );
         })}
@@ -485,7 +503,7 @@ export default function PlinkoGame({
             const slotY = VIEW_H - SLOTS_AREA;
             const isTarget = phase === "done" && i === targetSlot;
             return (
-              <g key={prize.id || i}>
+              <g key={`${prize.id || "p"}-${i}`}>
                 {/* Divisória (parede esquerda) */}
                 {i > 0 && (
                   <line
@@ -600,54 +618,6 @@ function truncate(s: string, n: number) {
   return s.length > n ? s.slice(0, n - 1) + "…" : s;
 }
 
-// ─────────────────────────────────────────────────
-// Luzes piscando no perímetro (cassino)
-// ─────────────────────────────────────────────────
-function BorderLights({ buttonColor }: { buttonColor: string }) {
-  // Distribui pontos ao redor do retângulo (top + bottom + sides)
-  const lights: { x: number; y: number; idx: number }[] = [];
-  const stepX = 18;
-  const stepY = 22;
-  // Top + bottom
-  for (let x = 12; x < VIEW_W - 12; x += stepX) {
-    lights.push({ x, y: 8, idx: lights.length });
-    lights.push({ x, y: VIEW_H - 8, idx: lights.length });
-  }
-  // Left + right
-  for (let y = 28; y < VIEW_H - 28; y += stepY) {
-    lights.push({ x: 8, y, idx: lights.length });
-    lights.push({ x: VIEW_W - 8, y, idx: lights.length });
-  }
-
-  const colors = ["#FFD54F", "#FFFFFF", buttonColor, "#42A5F5", "#EF5350", "#66BB6A"];
-
-  return (
-    <g>
-      {lights.map((l) => {
-        const color = colors[l.idx % colors.length];
-        const delay = (l.idx * 0.13) % 1.5;
-        return (
-          <circle key={l.idx} cx={l.x} cy={l.y} r="2.4" fill={color} opacity="0.5">
-            <animate
-              attributeName="opacity"
-              values="0.2;1;0.2"
-              dur="1.4s"
-              begin={`${delay}s`}
-              repeatCount="indefinite"
-            />
-            <animate
-              attributeName="r"
-              values="1.8;3.2;1.8"
-              dur="1.4s"
-              begin={`${delay}s`}
-              repeatCount="indefinite"
-            />
-          </circle>
-        );
-      })}
-    </g>
-  );
-}
 
 // ─────────────────────────────────────────────────
 // Partícula de confetti / faísca (SVG animado)

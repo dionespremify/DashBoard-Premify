@@ -20,9 +20,11 @@ interface Props {
   onDraftChange?: (draft: Branding) => void;
   /** Mostra aviso de "afeta todas as campanhas" no topo do form. */
   showGlobalWarning?: boolean;
+  /** Esconde o botão "Salvar personalização" — útil quando o parent controla o save. */
+  hideSaveButton?: boolean;
 }
 
-export default function BrandingForm({ onSaved, onDraftChange, showGlobalWarning }: Props) {
+export default function BrandingForm({ onSaved, onDraftChange, showGlobalWarning, hideSaveButton }: Props) {
   const [branding, setBranding] = useState<Branding | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -225,9 +227,11 @@ export default function BrandingForm({ onSaved, onDraftChange, showGlobalWarning
         </div>
       )}
 
-      <div className="flex justify-end">
-        <Button disabled={saving}>{saving ? "Salvando…" : "Salvar personalização"}</Button>
-      </div>
+      {!hideSaveButton && (
+        <div className="flex justify-end">
+          <Button disabled={saving}>{saving ? "Salvando…" : "Salvar personalização"}</Button>
+        </div>
+      )}
 
       {/* Branding atual exposto pro parent (preview) via callback opcional */}
       <input type="hidden" data-branding-state="true" value={branding?.tenantSlug ?? ""} />

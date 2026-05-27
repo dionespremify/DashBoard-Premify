@@ -30,12 +30,18 @@ export const GAMIFICATION_OPTIONS: {
     available: true,
   },
   {
-    value: "box",
-    label: "Caixa surpresa",
-    icon: "📦",
-    tag: "em breve",
-    description: "Abrindo uma caixa misteriosa com animação 3D.",
-    available: false,
+    value: "penalty",
+    label: "Chute ao gol",
+    icon: "⚽",
+    description: "Mire, ajuste a força e tente bater o goleiro pra acertar o prêmio.",
+    available: true,
+  },
+  {
+    value: "flip",
+    label: "Campo minado",
+    icon: "💣",
+    description: "Escolha uma casa do tabuleiro — pode esconder um prêmio ou uma mina.",
+    available: true,
   },
 ];
 

@@ -1,7 +1,7 @@
 import { apiClient } from "./client";
 
 export type WheelTheme = "classic" | "vegas" | "neon";
-export type GamificationType = "wheel" | "scratch" | "box" | "plinko";
+export type GamificationType = "wheel" | "scratch" | "plinko" | "penalty" | "flip";
 
 export interface Branding {
   tenantSlug: string;
