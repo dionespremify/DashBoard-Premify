@@ -25,7 +25,8 @@ import CampaignMobilePage, {
   type CampaignBranding,
   type CampaignDisplay,
 } from "../../components/gamification/CampaignMobilePage";
-import { getBranding, type Branding } from "../../api/branding";
+import { getBranding, updateBranding, type Branding } from "../../api/branding";
+import BrandingForm from "../../components/branding/BrandingForm";
 
 type Phase = "loading" | "question" | "recommendation" | "no_match" | "creating";
 
@@ -47,8 +48,9 @@ export default function WizardPage() {
   const [customerFormConfig, setCustomerFormConfig] = useState<CustomerFormField[]>(DEFAULT_CUSTOMER_FORM);
   const [surveyConfig, setSurveyConfig] = useState<SurveyConfig>(DEFAULT_SURVEY_CONFIG);
 
-  // branding pro preview
+  // branding pro preview (versão salva) + draft com mudanças não salvas
   const [branding, setBranding] = useState<Branding | null>(null);
+  const [brandingDraft, setBrandingDraft] = useState<Branding | null>(null);
   useEffect(() => {
     getBranding().then(setBranding).catch(() => setBranding(null));
   }, []);
@@ -165,6 +167,20 @@ export default function WizardPage() {
     setPhase("creating");
     setError(null);
     try {
+      // 1. Salva personalização (branding) se houve mudança no draft
+      if (brandingDraft) {
+        const updatedBranding = await updateBranding({
+          logoUrl: brandingDraft.logoUrl ?? null,
+          backgroundColor: brandingDraft.backgroundColor ?? null,
+          backgroundImageUrl: brandingDraft.backgroundImageUrl ?? null,
+          buttonColor: brandingDraft.buttonColor ?? null,
+          wheelTheme: brandingDraft.wheelTheme ?? null,
+          gamificationType: brandingDraft.gamificationType ?? null,
+        });
+        setBranding(updatedBranding);
+      }
+
+      // 2. Cria a campanha
       const created = await createCampaign({
         blueprintCode: step.recommendation.blueprintCode,
         name: campaignName.trim(),
@@ -206,6 +222,32 @@ export default function WizardPage() {
           <Tabs
             tabs={[
               {
+                key: "branding",
+                label: "Personalização",
+                icon: "🎨",
+                content: (
+                  <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+                    <BrandingForm
+                      onSaved={setBranding}
+                      onDraftChange={setBrandingDraft}
+                      showGlobalWarning
+                      hideSaveButton
+                    />
+                    <div className="lg:sticky lg:top-4 lg:self-start">
+                      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                        👁 Pré-visualização (ao vivo)
+                      </div>
+                      <WizardPreviewPanel
+                        recommendation={step.recommendation}
+                        dimensioning={dimensioning}
+                        campaignName={campaignName}
+                        branding={brandingDraft ?? branding}
+                      />
+                    </div>
+                  </div>
+                ),
+              },
+              {
                 key: "config",
                 label: "Configuração",
                 icon: "⚙️",
@@ -226,7 +268,7 @@ export default function WizardPage() {
                     onBack={history.length > 0 ? goBack : undefined}
                     onRestart={restart}
                     creating={false}
-                    gamificationType={branding?.gamificationType ?? "wheel"}
+                    gamificationType={(brandingDraft ?? branding)?.gamificationType ?? "wheel"}
                   />
                 ),
               },
@@ -274,7 +316,7 @@ export default function WizardPage() {
                     recommendation={step.recommendation}
                     dimensioning={dimensioning}
                     campaignName={campaignName}
-                    branding={branding}
+                    branding={brandingDraft ?? branding}
                   />
                 ),
               },
