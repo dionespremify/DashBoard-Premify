@@ -12,6 +12,7 @@ const ASSETS = {
   keeperIdle: "/games/penalty/keeper_idle.fbx",
   grassColor: "/games/penalty/grass_color.jpg",
   grassNormal: "/games/penalty/grass_normal.jpg",
+  stadiumBg: "/games/penalty/estadio.jpg",
 };
 
 // Escala e altura do modelo do goleiro (Mixamo FBX vem em CENTÍMETROS — base é ~0.012)
@@ -225,7 +226,8 @@ export default function PenaltyGame3D({
 
         <Suspense fallback={<LoadingTracker onLoaded={() => setAssetsLoaded(true)} />}>
           <LoadedNotifier onLoaded={() => setAssetsLoaded(true)} />
-          {/* Skybox simples (gradient azul → laranja) — mobile-friendly, sem HDR de 6MB */}
+          {/* Backdrop com foto do estádio (255KB) atrás do gol */}
+          <StadiumBackdrop />
           <StadiumSky />
 
           <Field />
@@ -298,6 +300,20 @@ function LoadedNotifier({ onLoaded }: { onLoaded: () => void }) {
 // Fallback do Suspense (não renderiza nada — só serve pra distinguir "carregando" no React tree).
 function LoadingTracker({ onLoaded: _onLoaded }: { onLoaded: () => void }) {
   return null;
+}
+
+// ─────────────────────────────────────────────────
+// Backdrop fotográfico — foto do estádio (sem gol) num plane atrás do gol 3D.
+// 255KB de JPG. O sky procedural cobre os lados/topo onde a foto não chega.
+function StadiumBackdrop() {
+  const tex = useTexture(ASSETS.stadiumBg);
+  // Aspect da foto recortada (1600x1323 ≈ 1.21:1). Plane 18x15 cobre o frustrum vertical.
+  return (
+    <mesh position={[0, 5, -10]}>
+      <planeGeometry args={[18, 15]} />
+      <meshBasicMaterial map={tex} toneMapped={false} />
+    </mesh>
+  );
 }
 
 // ─────────────────────────────────────────────────
