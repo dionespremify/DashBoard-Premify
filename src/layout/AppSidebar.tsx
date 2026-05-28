@@ -46,6 +46,11 @@ const navItems: NavItem[] = [
       { name: "Prêmios", path: "/relatorios#premios", pro: false },
     ],
   },
+  {
+    icon: <GridIcon />,
+    name: "Usuários",
+    path: "/usuarios",
+  },
 ];
 
 const othersItems: NavItem[] = [];

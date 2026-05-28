@@ -30,6 +30,8 @@ import ReportsPage from "./pages/Reports/ReportsPage";
 import ManagementPage from "./pages/Management/ManagementPage";
 import PublicCampaignPage from "./pages/Public/PublicCampaignPage";
 import PublicTenantPage from "./pages/Public/PublicTenantPage";
+import UsersPage from "./pages/Users/UsersPage";
+import AcceptInvitationPage from "./pages/Users/AcceptInvitationPage";
 
 export default function App() {
   return (
@@ -44,6 +46,9 @@ export default function App() {
           {/* Cliente final (mobile, sem auth, sem sidebar) */}
           <Route path="/p/:slug" element={<PublicTenantPage />} />
           <Route path="/p/:slug/c/:campaignId" element={<PublicCampaignPage />} />
+
+          {/* Aceitar convite (público, sem auth) */}
+          <Route path="/convite/:token" element={<AcceptInvitationPage />} />
 
           {/* Onboarding (protegida, fora do layout do dashboard) */}
           <Route
@@ -73,6 +78,7 @@ export default function App() {
             <Route path="/campanhas/:id/editar" element={<EditCampaignPage />} />
             <Route path="/personalizacao" element={<BrandingPage />} />
             <Route path="/conta" element={<AccountPage />} />
+            <Route path="/usuarios" element={<UsersPage />} />
             <Route path="/relatorios" element={<ReportsPage />} />
             <Route path="/gerenciamento" element={<ManagementPage />} />
 
