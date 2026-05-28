@@ -10,9 +10,8 @@ import type { PrizeDefinition } from "../prizes/PrizePoolEditor";
 const ASSETS = {
   keeperModel: "/games/penalty/keeper.glb",
   keeperIdle: "/games/penalty/keeper_idle.fbx",
-  keeperDive: "/games/penalty/keeper_dive.fbx",
-  keeperCatch: "/games/penalty/keeper_catch.fbx",
-  keeperStandUp: "/games/penalty/keeper_standup.fbx",
+  keeperDiveLeft: "/games/penalty/keeper_dive_left.fbx",
+  keeperDiveRight: "/games/penalty/keeper_dive_right.fbx",
   stadiumHDR: "/games/penalty/stadium.hdr",
   grassColor: "/games/penalty/grass_color.jpg",
   grassNormal: "/games/penalty/grass_normal.jpg",
@@ -124,17 +123,16 @@ export default function PenaltyGame3D({
     let keeperEnd: [number, number, number];
     let keeperRot: [number, number, number] = [0, 0, 0];
     if (isSavedShot) {
-      keeperEnd = [target.x, Math.max(0.8, target.y - 0.3), -2.6];
-      if (target.x < -0.5) keeperRot = [0, 0, Math.PI / 2.4];
-      else if (target.x > 0.5) keeperRot = [0, 0, -Math.PI / 2.4];
+      // Defende: mergulha pro lado do chute (mesmo X), mas baixo — sem pular pra cima.
+      // Se chute é no centro, joga pro lado esquerdo por padrão.
+      const sideX = target.x === 0 ? -2.0 : (target.x < 0 ? -2.4 : 2.4);
+      keeperEnd = [sideX, 0.3, -2.6];
+      keeperRot = [0, 0, sideX < 0 ? Math.PI / 2.4 : -Math.PI / 2.4];
     } else {
+      // Sempre mergulha pro lado OPOSTO ao chute (errar) — só lateral, sem subir
       const flipX = target.x < 0 ? 2.6 : -2.6;
-      keeperEnd = [flipX, Math.max(0.8, target.y - 0.3), -2.6];
+      keeperEnd = [flipX, 0.3, -2.6];
       keeperRot = [0, 0, target.x < 0 ? -Math.PI / 2.4 : Math.PI / 2.4];
-      if (Math.abs(target.x) < 0.6 && target.y > 1.5) {
-        keeperEnd = [0, 1.5, -2.6];
-        keeperRot = [0, 0, 0];
-      }
     }
 
     animState.current = {
@@ -625,9 +623,8 @@ function Keeper({
 
   // Carrega o modelo principal do FBX idle (vem com Y-Bot Mixamo dentro)
   const idleFbx = useFBX(ASSETS.keeperIdle);
-  const diveFbx = useFBX(ASSETS.keeperDive);
-  const catchFbx = useFBX(ASSETS.keeperCatch);
-  const standUpFbx = useFBX(ASSETS.keeperStandUp);
+  const diveLeftFbx = useFBX(ASSETS.keeperDiveLeft);
+  const diveRightFbx = useFBX(ASSETS.keeperDiveRight);
 
   // Usa o FBX idle direto como modelo (sem clonar — clone profundo quebra skinning)
   const scene = idleFbx;
@@ -640,23 +637,18 @@ function Keeper({
       c.name = "Idle";
       out.push(c);
     }
-    if (diveFbx?.animations?.[0]) {
-      const c = diveFbx.animations[0].clone();
-      c.name = "Dive";
+    if (diveLeftFbx?.animations?.[0]) {
+      const c = diveLeftFbx.animations[0].clone();
+      c.name = "DiveLeft";
       out.push(c);
     }
-    if (catchFbx?.animations?.[0]) {
-      const c = catchFbx.animations[0].clone();
-      c.name = "Catch";
-      out.push(c);
-    }
-    if (standUpFbx?.animations?.[0]) {
-      const c = standUpFbx.animations[0].clone();
-      c.name = "StandUp";
+    if (diveRightFbx?.animations?.[0]) {
+      const c = diveRightFbx.animations[0].clone();
+      c.name = "DiveRight";
       out.push(c);
     }
     return out;
-  }, [idleFbx, diveFbx, catchFbx, standUpFbx]);
+  }, [idleFbx, diveLeftFbx, diveRightFbx]);
 
   // Aplica as clips no group (drei detecta os bones automaticamente dentro do group)
   const { actions } = useAnimations(clips, group);
@@ -708,10 +700,9 @@ function Keeper({
     }
     const st = animStateRef.current;
     if (!st) return;
-    // Se vai pular pro alto (travessão) usa Catch (pega no alto)
-    // Senão usa Dive (mergulho lateral)
-    const isJumpUp = Math.abs(st.keeperRot[2]) < 0.05 && st.keeperEnd[1] > 1.2;
-    const target = isJumpUp ? "Catch" : "Dive";
+    // Sempre lateral: DiveLeft quando o goleiro vai pra esquerda (keeperEnd.x < 0),
+    // DiveRight quando vai pra direita (keeperEnd.x > 0). Sem pulo pro alto.
+    const target = st.keeperEnd[0] < 0 ? "DiveLeft" : "DiveRight";
     if (currentAction.current !== target && actions[target]) {
       if (currentAction.current && actions[currentAction.current]) {
         actions[currentAction.current]!.fadeOut(0.15);
