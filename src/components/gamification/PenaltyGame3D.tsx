@@ -210,7 +210,9 @@ export default function PenaltyGame3D({
         }}
       >
         <PerspectiveCamera makeDefault position={[0, 1.8, 6]} fov={55} />
-        <ambientLight intensity={0.3} />
+        {/* Ambiente claro pra compensar a falta de HDR environment */}
+        <ambientLight intensity={0.7} />
+        {/* Luz principal (refletor) — projeta sombra no gramado */}
         <directionalLight
           position={[5, 10, 5]}
           intensity={1.8}
@@ -222,7 +224,10 @@ export default function PenaltyGame3D({
           shadow-camera-bottom={-8}
           shadow-bias={-0.0002}
         />
-        <hemisphereLight args={["#87CEEB", "#1F2937", 0.35]} />
+        {/* Hemisphere: ceu azul claro + bounce do gramado pra cima */}
+        <hemisphereLight args={["#cfe7ff", "#2a3f55", 0.7]} />
+        {/* Fill light frontal — ilumina o GOLEIRO de frente sem custar shadow */}
+        <directionalLight position={[0, 3, 8]} intensity={0.8} />
 
         <Suspense fallback={<LoadingTracker onLoaded={() => setAssetsLoaded(true)} />}>
           <LoadedNotifier onLoaded={() => setAssetsLoaded(true)} />
