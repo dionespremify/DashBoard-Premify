@@ -508,6 +508,14 @@ export default function PublicCampaignPage() {
       <p className="text-sm opacity-80 mb-1">Código do seu prêmio</p>
       <p className="font-mono text-xl font-bold tracking-wider">{revealingReward.code.split(":").pop()}</p>
       <p className="text-xs opacity-70 mt-2">Apresente esse código no caixa pra resgatar</p>
+      <button
+        type="button"
+        onClick={() => window.location.reload()}
+        className="mt-4 px-5 py-2 rounded-full font-semibold text-white text-sm shadow hover:scale-105 transition-transform"
+        style={{ backgroundColor: buttonColor }}
+      >
+        ← Voltar
+      </button>
     </div>
   ) : bonusMessage ? (
     <div className="bg-yellow-300/20 backdrop-blur-md border border-yellow-300/40 rounded-2xl p-5 text-center">
