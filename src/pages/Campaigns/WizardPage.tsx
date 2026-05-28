@@ -446,7 +446,7 @@ function WizardRecommendationView({
               value={dimensioning[q.key]}
               onChange={(v) => onDimensioningChange(q.key, v)}
               siblings={dimensioning}
-              gamificationType={branding?.gamificationType ?? "wheel"}
+              gamificationType={gamificationType ?? "wheel"}
             />
           ))}
 
