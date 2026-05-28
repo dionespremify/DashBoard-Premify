@@ -118,21 +118,31 @@ export default function PenaltyGame3D({
   function kick() {
     if (!winningPrize || phase !== "aim") return;
     setPhase("kicking");
-    const target = isSavedShot ? TARGETS_3D[targetIdx % TARGETS_3D.length] : TARGETS_3D[targetIdx];
+
+    // A BOLA SEGUE A MIRA do usuário (mesmo cálculo da AimLine).
+    // Quando não há drag (autoReveal), usa TARGETS_3D[targetIdx] como fallback.
+    const hasAim = Math.hypot(dragOffset.dx, dragOffset.dy) > 0.05;
+    const fallback = TARGETS_3D[targetIdx];
+    const aimX = hasAim
+      ? Math.max(-3.0, Math.min(3.0, -dragOffset.dx * 6))
+      : fallback.x;
+    const aimY = hasAim
+      ? Math.max(0.5, Math.min(2.2, 0.4 + dragOffset.dy * 5))
+      : fallback.y;
+    const target = { x: aimX, y: aimY, z: -3 };
 
     let keeperEnd: [number, number, number];
     let keeperRot: [number, number, number] = [0, 0, 0];
     if (isSavedShot) {
-      // Defende: mergulha pro lado do chute (mesmo X), mas baixo — sem pular pra cima.
-      // Se chute é no centro, joga pro lado esquerdo por padrão.
-      const sideX = target.x === 0 ? -2.0 : (target.x < 0 ? -2.4 : 2.4);
+      // Defende: mergulha pro MESMO lado da bola (intercepta). Centro → escolhe esquerda.
+      const sideX = aimX < -0.2 ? -2.2 : aimX > 0.2 ? 2.2 : -2.0;
       keeperEnd = [sideX, 0.3, -2.6];
       keeperRot = [0, 0, sideX < 0 ? Math.PI / 2.4 : -Math.PI / 2.4];
     } else {
-      // Sempre mergulha pro lado OPOSTO ao chute (errar) — só lateral, sem subir
-      const flipX = target.x < 0 ? 2.6 : -2.6;
+      // Gol: goleiro vai pro lado OPOSTO da bola (erra o mergulho).
+      const flipX = aimX < 0 ? 2.6 : -2.6;
       keeperEnd = [flipX, 0.3, -2.6];
-      keeperRot = [0, 0, target.x < 0 ? -Math.PI / 2.4 : Math.PI / 2.4];
+      keeperRot = [0, 0, aimX < 0 ? -Math.PI / 2.4 : Math.PI / 2.4];
     }
 
     animState.current = {
