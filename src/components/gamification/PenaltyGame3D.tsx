@@ -194,7 +194,7 @@ export default function PenaltyGame3D({
           background: "rgba(0,0,0,0.3)",
           pointerEvents: "none",
         }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>⚽</div>
+          <div className="animate-spin" style={{ fontSize: 36, marginBottom: 10 }}>⚽</div>
           <div>Carregando jogo…</div>
         </div>
       )}
@@ -301,29 +301,86 @@ function LoadingTracker({ onLoaded: _onLoaded }: { onLoaded: () => void }) {
 }
 
 // ─────────────────────────────────────────────────
-// Skybox simples com gradient (sem HDR de 6MB) — mobile-friendly.
+// Skybox procedural com refletores + arquibancada com torcida estilizada.
+// Mantém o "feeling" de estádio sem precisar de HDR/JPG (gera ~200KB de textura em memória).
 function StadiumSky() {
-  // Textura procedural com gradient azul → laranja claro (efeito de luz de estádio)
   const skyTexture = useMemo(() => {
+    const W = 2048;
+    const H = 1024;
     const canvas = document.createElement("canvas");
-    canvas.width = 256;
-    canvas.height = 512;
+    canvas.width = W;
+    canvas.height = H;
     const ctx = canvas.getContext("2d")!;
-    const grad = ctx.createLinearGradient(0, 0, 0, 512);
-    grad.addColorStop(0.0, "#0c1e4c");
-    grad.addColorStop(0.4, "#1e3a8a");
-    grad.addColorStop(0.7, "#f59e0b");
-    grad.addColorStop(0.95, "#fbbf24");
-    grad.addColorStop(1.0, "#312416");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 256, 512);
+
+    // ─── 1. Céu (azul escuro topo → âmbar no horizonte iluminado pelo estádio) ───
+    const sky = ctx.createLinearGradient(0, 0, 0, H * 0.55);
+    sky.addColorStop(0.0, "#0a1530");
+    sky.addColorStop(0.4, "#1e3a8a");
+    sky.addColorStop(0.85, "#7c3aed");
+    sky.addColorStop(1.0, "#f59e0b");
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, H * 0.55);
+
+    // ─── 2. Arquibancada superior (estrutura escura) ───
+    ctx.fillStyle = "#0e0a18";
+    ctx.fillRect(0, H * 0.55, W, H * 0.1);
+
+    // ─── 3. Refletores (8 postes com halo brilhante) ───
+    const projectorY = H * 0.5;
+    for (let i = 0; i < 8; i++) {
+      const x = (i + 0.5) * (W / 8);
+      // Halo grande
+      const halo = ctx.createRadialGradient(x, projectorY, 0, x, projectorY, 90);
+      halo.addColorStop(0.0, "rgba(255, 250, 220, 0.85)");
+      halo.addColorStop(0.3, "rgba(255, 230, 150, 0.45)");
+      halo.addColorStop(0.7, "rgba(255, 200, 80, 0.12)");
+      halo.addColorStop(1.0, "rgba(255, 200, 80, 0)");
+      ctx.fillStyle = halo;
+      ctx.fillRect(x - 90, projectorY - 90, 180, 180);
+      // Núcleo brilhante
+      ctx.fillStyle = "#fffae0";
+      ctx.beginPath();
+      ctx.arc(x, projectorY, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // ─── 4. Arquibancada com torcida (faixa horizontal de pixels coloridos) ───
+    const standTop = H * 0.65;
+    const standBottom = H * 0.95;
+    // Fundo da arquibancada (gradient)
+    const standGrad = ctx.createLinearGradient(0, standTop, 0, standBottom);
+    standGrad.addColorStop(0.0, "#1f1f2e");
+    standGrad.addColorStop(1.0, "#0f0f1a");
+    ctx.fillStyle = standGrad;
+    ctx.fillRect(0, standTop, W, standBottom - standTop);
+
+    // Pixels da torcida
+    const crowdColors = ["#ef4444", "#fbbf24", "#10b981", "#3b82f6", "#ec4899", "#ffffff", "#a855f7", "#22d3ee"];
+    for (let i = 0; i < 8000; i++) {
+      const x = Math.random() * W;
+      const y = standTop + Math.random() * (standBottom - standTop);
+      ctx.fillStyle = crowdColors[Math.floor(Math.random() * crowdColors.length)];
+      ctx.globalAlpha = 0.55 + Math.random() * 0.4;
+      ctx.fillRect(x, y, 2.5, 2.5);
+    }
+    ctx.globalAlpha = 1;
+
+    // ─── 5. Bordo escuro embaixo (sombra do gramado fundindo no horizonte) ───
+    const bottomShade = ctx.createLinearGradient(0, H * 0.95, 0, H);
+    bottomShade.addColorStop(0.0, "rgba(0,0,0,0)");
+    bottomShade.addColorStop(1.0, "#000");
+    ctx.fillStyle = bottomShade;
+    ctx.fillRect(0, H * 0.95, W, H * 0.05);
+
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 4;
     return tex;
   }, []);
+
   return (
     <mesh scale={[-1, 1, 1]}>
-      <sphereGeometry args={[80, 32, 32]} />
+      <sphereGeometry args={[80, 48, 32]} />
       <meshBasicMaterial map={skyTexture} side={THREE.BackSide} />
     </mesh>
   );
