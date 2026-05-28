@@ -63,6 +63,9 @@ export default function PublicCampaignPage() {
   const [participations, setParticipations] = useState<PublicParticipation[]>([]);
   const [revealingReward, setRevealingReward] = useState<PublicReward | null>(null);
   const [winningIndex, setWinningIndex] = useState<number | undefined>(undefined);
+  // gameFinished = true só depois do jogo (chute, raspadinha, etc) realmente terminar.
+  // Controla quando o card "Código do seu prêmio" aparece e quando esconder a mecânica.
+  const [gameFinished, setGameFinished] = useState(false);
 
   // Carrega campanha
   useEffect(() => {
@@ -497,10 +500,10 @@ export default function PublicCampaignPage() {
         </button>
       </form>
     )
-  ) : pendingReward && !revealingReward ? (
-    // Quando tem prêmio pendente, o botão da própria roleta já dispara o reveal — não precisa de card extra.
+  ) : pendingReward && !gameFinished ? (
+    // Enquanto o usuário está jogando, esconde tudo abaixo da mecânica — o código só aparece depois.
     null
-  ) : revealingReward ? (
+  ) : gameFinished && revealingReward ? (
     <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20 text-center">
       <p className="text-sm opacity-80 mb-1">Código do seu prêmio</p>
       <p className="font-mono text-xl font-bold tracking-wider">{revealingReward.code.split(":").pop()}</p>
@@ -527,10 +530,11 @@ export default function PublicCampaignPage() {
           interactive={!!pendingReward && !revealingReward}
           onCtaClick={() => pendingReward && startReveal(pendingReward)}
           ctaLabel={pendingReward ? "🎁 Girar a roleta!" : "Girar a roleta!"}
-          hideMechanic={mechanicLocked}
+          hideMechanic={mechanicLocked || gameFinished}
           autoSpinOnMount={revealingReward !== null}
           winningPrizeIndex={winningIndex}
           rewardCode={revealingReward?.code}
+          onSpinEnd={() => setGameFinished(true)}
           bottomSlot={bottomSlot}
         />
       </div>
