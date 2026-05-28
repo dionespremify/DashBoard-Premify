@@ -205,17 +205,17 @@ export default function PenaltyGame3D({
         gl={{
           antialias: true,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.05,
+          toneMappingExposure: 1.4,
           outputColorSpace: THREE.SRGBColorSpace,
         }}
       >
         <PerspectiveCamera makeDefault position={[0, 1.8, 6]} fov={55} />
-        {/* Ambiente claro pra compensar a falta de HDR environment */}
-        <ambientLight intensity={0.7} />
+        {/* Ambiente bem claro pra simular luz de estádio iluminado */}
+        <ambientLight intensity={1.4} />
         {/* Luz principal (refletor) — projeta sombra no gramado */}
         <directionalLight
           position={[5, 10, 5]}
-          intensity={1.8}
+          intensity={2.0}
           castShadow
           shadow-mapSize={[2048, 2048]}
           shadow-camera-left={-8}
@@ -224,10 +224,12 @@ export default function PenaltyGame3D({
           shadow-camera-bottom={-8}
           shadow-bias={-0.0002}
         />
-        {/* Hemisphere: ceu azul claro + bounce do gramado pra cima */}
-        <hemisphereLight args={["#cfe7ff", "#2a3f55", 0.7]} />
-        {/* Fill light frontal — ilumina o GOLEIRO de frente sem custar shadow */}
-        <directionalLight position={[0, 3, 8]} intensity={0.8} />
+        {/* Hemisphere: ceu claro + bounce do gramado */}
+        <hemisphereLight args={["#ffffff", "#88a2b8", 1.0]} />
+        {/* Fill light frontal — ilumina o goleiro de frente, sem shadow (sem custo) */}
+        <directionalLight position={[0, 3, 8]} intensity={1.5} />
+        {/* Rim light atrás do goleiro pra destacar silhueta */}
+        <pointLight position={[0, 3, -5]} intensity={0.8} color="#fff8d0" />
 
         <Suspense fallback={<LoadingTracker onLoaded={() => setAssetsLoaded(true)} />}>
           <LoadedNotifier onLoaded={() => setAssetsLoaded(true)} />
@@ -274,13 +276,12 @@ export default function PenaltyGame3D({
         </EffectComposer>
       </Canvas>
 
-      {phase === "aim" && (
+      {phase === "aim" && aimForce < 0.05 && (
+        <div style={ballHintStyle}>arraste a bola pra chutar</div>
+      )}
+      {phase === "aim" && aimForce >= 0.05 && (
         <div style={overlayBottomCenter}>
-          {aimForce < 0.05 ? (
-            <div style={instructionStyle}>⚽ ARRASTE PRA MIRAR E SOLTE PRA CHUTAR</div>
-          ) : (
-            <ForceBar value={aimForce} />
-          )}
+          <ForceBar value={aimForce} />
         </div>
       )}
       {result === "GOOOL" && (
@@ -610,7 +611,7 @@ function Ball({
     if (phase === "aim") done.current = false;
   }, [phase]);
 
-  useFrame(() => {
+  useFrame(({ clock }) => {
     if (!ref.current) return;
     const st = animStateRef.current;
     if (!st || phase !== "kicking") {
@@ -627,9 +628,15 @@ function Ball({
           0,
           -dragOffset.dx * 0.5,
         );
+        // PULSAR quando o usuário ainda não começou o drag — chama atenção pra ela
+        const idle = Math.hypot(dragOffset.dx, dragOffset.dy) < 0.05;
+        const pulse = idle ? 1 + Math.sin(clock.elapsedTime * 4) * 0.08 : 1;
+        ref.current.scale.setScalar(pulse);
       }
       return;
     }
+    // Reseta o scale quando começa o chute
+    ref.current.scale.setScalar(1);
     const t = Math.min(1, (performance.now() - st.t0) / st.duration);
     const eased = 1 - Math.pow(1 - t, 2);
     const x = st.start[0] + (st.target[0] - st.start[0]) * eased;
@@ -856,6 +863,21 @@ const instructionStyle: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 700,
   letterSpacing: 1,
+};
+
+// Hint discreto acima da bola (que tá próxima do canto inferior central)
+const ballHintStyle: React.CSSProperties = {
+  position: "absolute",
+  left: "50%",
+  bottom: "22%",
+  transform: "translateX(-50%)",
+  color: "rgba(255,255,255,0.92)",
+  fontSize: 11,
+  fontWeight: 500,
+  letterSpacing: 0.5,
+  textShadow: "0 1px 3px rgba(0,0,0,0.7)",
+  pointerEvents: "none",
+  whiteSpace: "nowrap",
 };
 
 function ForceBar({ value }: { value: number }) {
