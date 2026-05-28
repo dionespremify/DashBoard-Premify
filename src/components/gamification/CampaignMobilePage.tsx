@@ -270,7 +270,7 @@ export default function CampaignMobilePage({
               buttonColor={buttonColor}
               winningPrizeIndex={demoMode ? demoWinningIndex : winningPrizeIndex}
               autoReveal={false}
-              size={320}
+              size={380}
               onRevealed={(p) => {
                 setRevealed(p);
                 onSpinEnd?.(p);

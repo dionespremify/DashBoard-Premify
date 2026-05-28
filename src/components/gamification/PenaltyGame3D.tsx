@@ -209,7 +209,8 @@ export default function PenaltyGame3D({
           outputColorSpace: THREE.SRGBColorSpace,
         }}
       >
-        <PerspectiveCamera makeDefault position={[0, 1.8, 6]} fov={55} />
+        {/* Camera elevada, distante e inclinada pra baixo pra enquadrar bola + gol + goleiro */}
+        <PerspectiveCamera makeDefault position={[0, 2.4, 7.5]} rotation={[-0.22, 0, 0]} fov={50} />
         {/* Ambiente bem claro pra simular luz de estádio iluminado */}
         <ambientLight intensity={1.4} />
         {/* Luz principal (refletor) — projeta sombra no gramado */}
@@ -869,13 +870,13 @@ const instructionStyle: React.CSSProperties = {
 const ballHintStyle: React.CSSProperties = {
   position: "absolute",
   left: "50%",
-  bottom: "22%",
+  bottom: "32%",
   transform: "translateX(-50%)",
-  color: "rgba(255,255,255,0.92)",
-  fontSize: 11,
+  color: "rgba(255,255,255,0.95)",
+  fontSize: 12,
   fontWeight: 500,
   letterSpacing: 0.5,
-  textShadow: "0 1px 3px rgba(0,0,0,0.7)",
+  textShadow: "0 1px 4px rgba(0,0,0,0.85)",
   pointerEvents: "none",
   whiteSpace: "nowrap",
 };
