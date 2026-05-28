@@ -1,24 +1,18 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type MutableRefObject } from "react";
-import { Canvas, useFrame, useLoader } from "@react-three/fiber";
-import { PerspectiveCamera, Stars, Environment, useGLTF, useAnimations, useFBX, useTexture, ContactShadows, Line } from "@react-three/drei";
-import { EffectComposer, Bloom, Vignette, ChromaticAberration } from "@react-three/postprocessing";
-import { BlendFunction } from "postprocessing";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { PerspectiveCamera, useAnimations, useFBX, useTexture, ContactShadows, Line } from "@react-three/drei";
+import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
 import * as THREE from "three";
 import type { PrizeDefinition } from "../prizes/PrizePoolEditor";
 
 // URLs dos assets em /public/games/penalty/
+// Versão mobile-friendly: só o FBX idle do goleiro (~10MB) — o resto é procedural.
+// O dive (esquerda/direita) é animado por translate/rotate do group, sem precisar de FBX extra.
 const ASSETS = {
-  keeperModel: "/games/penalty/keeper.glb",
   keeperIdle: "/games/penalty/keeper_idle.fbx",
-  keeperDiveLeft: "/games/penalty/keeper_dive_left.fbx",
-  keeperDiveRight: "/games/penalty/keeper_dive_right.fbx",
-  stadiumHDR: "/games/penalty/stadium.hdr",
   grassColor: "/games/penalty/grass_color.jpg",
   grassNormal: "/games/penalty/grass_normal.jpg",
 };
-
-// Pré-carrega o modelo do goleiro
-useGLTF.preload(ASSETS.keeperModel);
 
 // Escala e altura do modelo do goleiro (Mixamo FBX vem em CENTÍMETROS — base é ~0.012)
 const KEEPER_SCALE = 0.022;
@@ -171,6 +165,7 @@ export default function PenaltyGame3D({
 
   const aimForce = Math.min(1, Math.hypot(dragOffset.dx, dragOffset.dy) / 0.4);
   const result = phase === "result" ? (isSavedShot ? "DEFENDEU" : "GOOOL") : null;
+  const [assetsLoaded, setAssetsLoaded] = useState(false);
 
   return (
     <div
@@ -185,15 +180,27 @@ export default function PenaltyGame3D({
         height: size * 1.25,
         borderRadius: 16,
         overflow: "hidden",
-        background: "#000",
+        background: "linear-gradient(180deg, #0c1e4c 0%, #1e3a8a 50%, #f59e0b 100%)",
         boxShadow: "0 12px 40px rgba(0,0,0,0.4)",
         touchAction: "none",
         userSelect: "none",
       }}
     >
+      {!assetsLoaded && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 5,
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          color: "white", fontSize: 13, fontWeight: 600, letterSpacing: 1,
+          background: "rgba(0,0,0,0.3)",
+          pointerEvents: "none",
+        }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>⚽</div>
+          <div>Carregando jogo…</div>
+        </div>
+      )}
       <Canvas
         shadows="soft"
-        dpr={[1, 2]}
+        dpr={[1, 1.5]}
         gl={{
           antialias: true,
           toneMapping: THREE.ACESFilmicToneMapping,
@@ -216,9 +223,10 @@ export default function PenaltyGame3D({
         />
         <hemisphereLight args={["#87CEEB", "#1F2937", 0.35]} />
 
-        <Suspense fallback={null}>
-          {/* HDR de estádio: ilumina + serve como skybox 360° visível ao fundo */}
-          <Environment files={ASSETS.stadiumHDR} background backgroundBlurriness={0.08} backgroundIntensity={0.45} />
+        <Suspense fallback={<LoadingTracker onLoaded={() => setAssetsLoaded(true)} />}>
+          <LoadedNotifier onLoaded={() => setAssetsLoaded(true)} />
+          {/* Skybox simples (gradient azul → laranja) — mobile-friendly, sem HDR de 6MB */}
+          <StadiumSky />
 
           <Field />
           <Goal />
@@ -252,11 +260,10 @@ export default function PenaltyGame3D({
           />
         </Suspense>
 
-        {/* Pós-processamento: bloom + vignette + leve chromatic */}
-        <EffectComposer multisampling={2}>
+        {/* Pós-processamento: bloom + vignette (sem chromatic aberration pra economizar GPU mobile) */}
+        <EffectComposer multisampling={0}>
           <Bloom intensity={0.5} luminanceThreshold={0.6} luminanceSmoothing={0.6} mipmapBlur />
-          <Vignette eskil={false} offset={0.18} darkness={0.55} blendFunction={BlendFunction.NORMAL} />
-          <ChromaticAberration offset={[0.0006, 0.0006]} radialModulation={false} modulationOffset={0} />
+          <Vignette eskil={false} offset={0.18} darkness={0.55} />
         </EffectComposer>
       </Canvas>
 
@@ -279,12 +286,45 @@ export default function PenaltyGame3D({
   );
 }
 
+// Renderiza no Canvas só depois que o Suspense liberou — sinaliza pro overlay de loading sumir.
+function LoadedNotifier({ onLoaded }: { onLoaded: () => void }) {
+  useEffect(() => {
+    onLoaded();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
+
+// Fallback do Suspense (não renderiza nada — só serve pra distinguir "carregando" no React tree).
+function LoadingTracker({ onLoaded: _onLoaded }: { onLoaded: () => void }) {
+  return null;
+}
+
 // ─────────────────────────────────────────────────
-function Sky() {
+// Skybox simples com gradient (sem HDR de 6MB) — mobile-friendly.
+function StadiumSky() {
+  // Textura procedural com gradient azul → laranja claro (efeito de luz de estádio)
+  const skyTexture = useMemo(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d")!;
+    const grad = ctx.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0.0, "#0c1e4c");
+    grad.addColorStop(0.4, "#1e3a8a");
+    grad.addColorStop(0.7, "#f59e0b");
+    grad.addColorStop(0.95, "#fbbf24");
+    grad.addColorStop(1.0, "#312416");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 256, 512);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }, []);
   return (
-    <mesh>
-      <sphereGeometry args={[100, 32, 32]} />
-      <meshBasicMaterial color="#1e3a8a" side={THREE.BackSide} />
+    <mesh scale={[-1, 1, 1]}>
+      <sphereGeometry args={[80, 32, 32]} />
+      <meshBasicMaterial map={skyTexture} side={THREE.BackSide} />
     </mesh>
   );
 }
@@ -631,15 +671,13 @@ function Keeper({
 }) {
   const group = useRef<THREE.Group>(null);
 
-  // Carrega o modelo principal do FBX idle (vem com Y-Bot Mixamo dentro)
+  // Carrega só o FBX idle (vem com Y-Bot Mixamo dentro). O dive é animado matematicamente.
   const idleFbx = useFBX(ASSETS.keeperIdle);
-  const diveLeftFbx = useFBX(ASSETS.keeperDiveLeft);
-  const diveRightFbx = useFBX(ASSETS.keeperDiveRight);
 
   // Usa o FBX idle direto como modelo (sem clonar — clone profundo quebra skinning)
   const scene = idleFbx;
 
-  // Coleta os clips das outras animações (mesmo rig, bones batem)
+  // Só a animação de idle — dive lateral é feito via translate/rotate do group no useFrame
   const clips = useMemo(() => {
     const out: THREE.AnimationClip[] = [];
     if (idleFbx?.animations?.[0]) {
@@ -647,18 +685,8 @@ function Keeper({
       c.name = "Idle";
       out.push(c);
     }
-    if (diveLeftFbx?.animations?.[0]) {
-      const c = diveLeftFbx.animations[0].clone();
-      c.name = "DiveLeft";
-      out.push(c);
-    }
-    if (diveRightFbx?.animations?.[0]) {
-      const c = diveRightFbx.animations[0].clone();
-      c.name = "DiveRight";
-      out.push(c);
-    }
     return out;
-  }, [idleFbx, diveLeftFbx, diveRightFbx]);
+  }, [idleFbx]);
 
   // Aplica as clips no group (drei detecta os bones automaticamente dentro do group)
   const { actions } = useAnimations(clips, group);
@@ -696,33 +724,6 @@ function Keeper({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actions.Idle]);
-
-  // Troca animação conforme a fase + direção do mergulho
-  useEffect(() => {
-    if (!actions || phase !== "kicking") {
-      // Volta pra idle
-      if (currentAction.current && currentAction.current !== "Idle" && actions.Idle) {
-        actions[currentAction.current]?.fadeOut(0.25);
-        actions.Idle.reset().fadeIn(0.3).play();
-        currentAction.current = "Idle";
-      }
-      return;
-    }
-    const st = animStateRef.current;
-    if (!st) return;
-    // Sempre lateral: DiveLeft quando o goleiro vai pra esquerda (keeperEnd.x < 0),
-    // DiveRight quando vai pra direita (keeperEnd.x > 0). Sem pulo pro alto.
-    const target = st.keeperEnd[0] < 0 ? "DiveLeft" : "DiveRight";
-    if (currentAction.current !== target && actions[target]) {
-      if (currentAction.current && actions[currentAction.current]) {
-        actions[currentAction.current]!.fadeOut(0.15);
-      }
-      actions[target].reset().fadeIn(0.15).setLoop(THREE.LoopOnce, 1).play();
-      actions[target].clampWhenFinished = true;
-      currentAction.current = target;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
 
   useFrame(() => {
     if (!group.current) return;
