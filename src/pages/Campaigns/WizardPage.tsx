@@ -219,6 +219,24 @@ export default function WizardPage() {
         )}
 
         {phase === "recommendation" && step?.recommendation && (
+          <>
+            {/* Barra de ações fixa — visível em todas as abas */}
+            <div className="sticky top-0 z-10 -mx-2 mb-4 px-2 py-3 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-3">
+              <Button
+                variant="outline"
+                onClick={() => (history.length > 0 ? goBack() : restart())}
+              >
+                ← Voltar
+              </Button>
+              <Button onClick={handleCreate} disabled={!campaignName.trim()}>
+                {campaignName.trim() ? "💾 Criar campanha" : "Dê um nome na aba Configuração"}
+              </Button>
+            </div>
+            {error && (
+              <div className="mb-4 p-3 text-sm rounded-lg bg-error-50 text-error-700 border border-error-200 dark:bg-error-500/10 dark:text-error-300 dark:border-error-500/30">
+                {error}
+              </div>
+            )}
           <Tabs
             tabs={[
               {
@@ -322,6 +340,7 @@ export default function WizardPage() {
               },
             ]}
           />
+          </>
         )}
 
         {phase === "creating" && (
@@ -824,6 +843,7 @@ function WizardPreviewPanel({
     backgroundImageUrl: branding?.backgroundImageUrl,
     buttonColor: branding?.buttonColor ?? "#FF6B35",
     wheelTheme: branding?.wheelTheme ?? "vegas",
+    gamificationType: branding?.gamificationType ?? "wheel",
   };
 
   const display: CampaignDisplay = {
@@ -838,11 +858,18 @@ function WizardPreviewPanel({
   return (
     <div className="flex justify-center py-2">
       <div
+        key={previewBranding.gamificationType ?? "wheel"}
         className="overflow-hidden rounded-[2.5rem] border-[10px] border-gray-800 dark:border-gray-700 shadow-2xl bg-black"
         style={{ aspectRatio: "9/16", maxHeight: "75vh", width: "min(380px, 100%)" }}
       >
         <div className="w-full h-full overflow-auto">
-          <CampaignMobilePage branding={previewBranding} campaign={display} interactive={false} demoMode />
+          <CampaignMobilePage
+            key={previewBranding.gamificationType ?? "wheel"}
+            branding={previewBranding}
+            campaign={display}
+            interactive={false}
+            demoMode
+          />
         </div>
       </div>
     </div>
