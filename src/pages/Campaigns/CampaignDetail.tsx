@@ -99,7 +99,7 @@ export default function CampaignDetail() {
   if (loading) {
     return (
       <>
-        <PageBreadcrumb pageTitle="Campanha" />
+        <PageBreadcrumb pageTitle="Campanha" parents={[{ label: "Campanhas", path: "/campanhas" }]} />
         <div className="p-8 text-center text-gray-500 dark:text-gray-400">Carregando…</div>
       </>
     );
@@ -108,7 +108,7 @@ export default function CampaignDetail() {
   if (!campaign) {
     return (
       <>
-        <PageBreadcrumb pageTitle="Campanha" />
+        <PageBreadcrumb pageTitle="Campanha" parents={[{ label: "Campanhas", path: "/campanhas" }]} />
         <div className="p-8 text-center">
           <p className="mb-4 text-gray-500 dark:text-gray-400">{error ?? "Campanha não encontrada"}</p>
           <Link to="/campanhas">
@@ -127,7 +127,7 @@ export default function CampaignDetail() {
   return (
     <>
       <PageMeta title={`${campaign.name} | Premify`} description={campaign.description ?? "Campanha"} />
-      <PageBreadcrumb pageTitle={campaign.name} />
+      <PageBreadcrumb pageTitle={campaign.name} parents={[{ label: "Campanhas", path: "/campanhas" }]} />
 
       <div className="max-w-3xl mx-auto min-w-0 grid gap-6">
         {/* Header */}

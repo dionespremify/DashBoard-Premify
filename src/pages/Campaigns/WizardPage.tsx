@@ -202,7 +202,7 @@ export default function WizardPage() {
   return (
     <>
       <PageMeta title="Nova campanha | Premify" description="Crie uma nova campanha guiada pelo wizard." />
-      <PageBreadcrumb pageTitle="Nova campanha" />
+      <PageBreadcrumb pageTitle="Nova campanha" parents={[{ label: "Campanhas", path: "/campanhas" }]} />
 
       <div className="max-w-3xl mx-auto min-w-0">
         {phase === "loading" && (

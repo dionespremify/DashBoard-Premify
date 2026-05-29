@@ -148,7 +148,7 @@ export default function EditCampaignPage() {
   if (loading) {
     return (
       <>
-        <PageBreadcrumb pageTitle="Editar campanha" />
+        <PageBreadcrumb pageTitle="Editar campanha" parents={[{ label: "Campanhas", path: "/campanhas" }]} />
         <div className="p-8 text-center text-gray-500 dark:text-gray-400">Carregando…</div>
       </>
     );
@@ -157,7 +157,7 @@ export default function EditCampaignPage() {
   if (!campaign) {
     return (
       <>
-        <PageBreadcrumb pageTitle="Editar campanha" />
+        <PageBreadcrumb pageTitle="Editar campanha" parents={[{ label: "Campanhas", path: "/campanhas" }]} />
         <div className="p-8 text-center">
           <p className="mb-4 text-gray-500 dark:text-gray-400">{error ?? "Campanha não encontrada"}</p>
           <Link to="/campanhas">
@@ -271,7 +271,13 @@ export default function EditCampaignPage() {
   return (
     <>
       <PageMeta title={`Editar ${campaign.name} | Premify`} description="Edite os detalhes da campanha." />
-      <PageBreadcrumb pageTitle={`Editar: ${campaign.name}`} />
+      <PageBreadcrumb
+        pageTitle={`Editar: ${campaign.name}`}
+        parents={[
+          { label: "Campanhas", path: "/campanhas" },
+          { label: campaign.name, path: `/campanhas/${campaign.id}` },
+        ]}
+      />
 
       <div className="max-w-3xl mx-auto min-w-0">
         {/* Barra de ações fixa — visível em todas as abas */}
