@@ -10,6 +10,7 @@ import {
   getCustomerParticipations,
   getCustomerRewards,
   getPublicCampaign,
+  getPublicCampaignBySlug,
   joinPublicCampaign,
   registerPublicCustomer,
   requestLoginCode,
@@ -36,8 +37,15 @@ const PHONE_STORAGE_KEY = "premify_customer_phone";
 type AuthPhase = "choose" | "register" | "login_email" | "login_code";
 
 export default function PublicCampaignPage() {
-  const { slug, campaignId: campaignIdParam } = useParams<{ slug: string; campaignId: string }>();
-  const campaignId = campaignIdParam ? parseInt(campaignIdParam, 10) : NaN;
+  // Aceita os 2 formatos de URL:
+  //   /p/{slug}/c/{campaignId}        — formato antigo por ID (retrocompat)
+  //   /p/{slug}/{campaignSlug}        — formato novo por slug bonito
+  const { slug, campaignId: campaignIdParam, campaignSlug } = useParams<{
+    slug: string;
+    campaignId?: string;
+    campaignSlug?: string;
+  }>();
+  const campaignIdFromUrl = campaignIdParam ? parseInt(campaignIdParam, 10) : NaN;
 
   const [campaign, setCampaign] = useState<PublicCampaign | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,13 +75,15 @@ export default function PublicCampaignPage() {
   // Controla quando o card "Código do seu prêmio" aparece e quando esconder a mecânica.
   const [gameFinished, setGameFinished] = useState(false);
 
-  // Carrega campanha
+  // Carrega campanha — usa slug bonito se houver, senão fallback no ID
   useEffect(() => {
-    if (!slug || isNaN(campaignId)) return;
+    if (!slug || (isNaN(campaignIdFromUrl) && !campaignSlug)) return;
     let active = true;
     (async () => {
       try {
-        const c = await getPublicCampaign(slug, campaignId);
+        const c = campaignSlug
+          ? await getPublicCampaignBySlug(slug, campaignSlug)
+          : await getPublicCampaign(slug, campaignIdFromUrl);
         if (active) setCampaign(c);
       } catch (err) {
         if (active) setError(extractApiError(err, "Erro ao carregar campanha"));
@@ -84,7 +94,10 @@ export default function PublicCampaignPage() {
     return () => {
       active = false;
     };
-  }, [slug, campaignId]);
+  }, [slug, campaignIdFromUrl, campaignSlug]);
+
+  // campaignId atual (depois que carregou)
+  const campaignId = campaign?.id ?? campaignIdFromUrl;
 
   // Se já tem phone salvo, tenta carregar rewards
   useEffect(() => {

@@ -206,7 +206,7 @@ export default function CampaignDetail() {
         {/* QR Code da campanha */}
         {branding && (
           <QRCodeCard
-            url={`${window.location.origin}/p/${branding.tenantSlug}/c/${campaign.id}`}
+            url={`${window.location.origin}/p/${branding.tenantSlug}/${campaign.slug ?? `c/${campaign.id}`}`}
             tenantName={branding.tenantName}
             campaignName={campaign.name}
             fgColor={branding.buttonColor ?? "#111827"}

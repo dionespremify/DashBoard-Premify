@@ -90,6 +90,7 @@ export interface Campaign {
   blueprintCode?: string | null;
   objectiveCode?: string | null;
   name: string;
+  slug?: string | null;
   description?: string | null;
   status: string;
   startsAt: string;

@@ -2,6 +2,7 @@ import { apiClient } from "./client";
 
 export interface PublicCampaign {
   id: number;
+  slug?: string | null;
   name: string;
   description?: string | null;
   status: string;
@@ -81,6 +82,12 @@ export async function getPublicCampaign(tenantSlug: string, campaignId: number):
   return data;
 }
 
+/** Versão por slug — URL bonita /p/{tenantSlug}/{campaignSlug}. */
+export async function getPublicCampaignBySlug(tenantSlug: string, campaignSlug: string): Promise<PublicCampaign> {
+  const { data } = await apiClient.get<PublicCampaign>(`/public/${tenantSlug}/campaigns/by-slug/${campaignSlug}`);
+  return data;
+}
+
 export async function registerPublicCustomer(payload: PublicRegisterRequest): Promise<PublicCustomer> {
   const { data } = await apiClient.post<PublicCustomer>("/public/customers/register", payload);
   return data;
@@ -88,6 +95,7 @@ export async function registerPublicCustomer(payload: PublicRegisterRequest): Pr
 
 export interface ActiveCampaignSummary {
   id: number;
+  slug?: string | null;
   name: string;
   description?: string | null;
   endsAt?: string | null;

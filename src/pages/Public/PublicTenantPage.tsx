@@ -30,9 +30,11 @@ export default function PublicTenantPage() {
     };
   }, [slug]);
 
-  // Se só tem 1 campanha → redireciona direto
+  // Se só tem 1 campanha → redireciona direto (preferindo slug se houver)
   if (data && data.campaigns.length === 1) {
-    return <Navigate to={`/p/${slug}/c/${data.campaigns[0].id}`} replace />;
+    const c = data.campaigns[0];
+    const path = c.slug ? `/p/${slug}/${c.slug}` : `/p/${slug}/c/${c.id}`;
+    return <Navigate to={path} replace />;
   }
 
   const tenant = data?.tenant;
@@ -97,7 +99,7 @@ export default function PublicTenantPage() {
                 <button
                   key={c.id}
                   type="button"
-                  onClick={() => navigate(`/p/${slug}/c/${c.id}`)}
+                  onClick={() => navigate(c.slug ? `/p/${slug}/${c.slug}` : `/p/${slug}/c/${c.id}`)}
                   className="w-full text-left bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20 hover:bg-white/20 active:scale-[0.98] transition shadow-lg"
                 >
                   <div className="flex items-start gap-3">

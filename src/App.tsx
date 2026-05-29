@@ -45,7 +45,10 @@ export default function App() {
 
           {/* Cliente final (mobile, sem auth, sem sidebar) */}
           <Route path="/p/:slug" element={<PublicTenantPage />} />
+          {/* URL antiga por ID — mantida pra retrocompat */}
           <Route path="/p/:slug/c/:campaignId" element={<PublicCampaignPage />} />
+          {/* URL nova por slug bonito */}
+          <Route path="/p/:slug/:campaignSlug" element={<PublicCampaignPage />} />
 
           {/* Aceitar convite (público, sem auth) */}
           <Route path="/convite/:token" element={<AcceptInvitationPage />} />
