@@ -8,6 +8,7 @@ import {
   getCampaign,
   updateCampaignStatus,
   type Campaign,
+  type MechanicResponse,
 } from "../../api/campaigns";
 import { getBranding, type Branding } from "../../api/branding";
 import { extractApiError } from "../../api/client";
@@ -215,31 +216,12 @@ export default function CampaignDetail() {
         {/* Mecânicas */}
         <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
           <h2 className="mb-4 text-lg font-medium text-gray-800 dark:text-white/90">
-            Mecânicas da campanha
+            Mecânicas e prêmios
           </h2>
 
           <div className="grid gap-3">
             {campaign.mechanics.map((m) => (
-              <div
-                key={m.id}
-                className="p-4 border rounded-xl border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50"
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="font-medium text-gray-800 dark:text-white/90">
-                    {MECHANIC_LABEL[m.type] ?? m.type}
-                  </span>
-                  {m.isPrimary && (
-                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
-                      Principal
-                    </span>
-                  )}
-                </div>
-                {m.config != null && (
-                  <pre className="text-xs text-gray-600 dark:text-gray-300 whitespace-pre-wrap font-mono overflow-x-auto">
-                    {JSON.stringify(m.config, null, 2)}
-                  </pre>
-                )}
-              </div>
+              <MechanicCard key={m.id} mechanic={m} />
             ))}
           </div>
         </div>
@@ -345,6 +327,113 @@ function CampaignPreviewModal({
         </div>
         <div className="flex-1 overflow-auto">
           <CampaignMobilePage branding={previewBranding} campaign={display} interactive={false} demoMode />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────
+// Card visual de uma mecânica + seus prêmios.
+// Substitui o dump de JSON cru por uma lista legível.
+// ─────────────────────────────────────────────────
+interface PrizeView {
+  id?: string;
+  label?: string;
+  icon?: string;
+  color?: string;
+  imageUrl?: string;
+  type?: string;
+  value?: number;
+  slices?: number;
+  quota?: { limit?: number; period?: string } | null;
+}
+
+const PRIZE_TYPE_LABEL: Record<string, string> = {
+  item: "Item",
+  discount_percent: "% desconto",
+  discount_fixed: "Desconto fixo",
+  voucher: "Voucher",
+  try_again: "Tente novamente",
+  cashback: "Cashback",
+};
+
+const QUOTA_PERIOD_LABEL: Record<string, string> = {
+  daily: "por dia",
+  weekly: "por semana",
+  monthly: "por mês",
+  total: "no total",
+};
+
+function MechanicCard({ mechanic }: { mechanic: MechanicResponse }) {
+  const config = mechanic.config as { prizes?: PrizeView[] } | null | undefined;
+  const prizes = Array.isArray(config?.prizes) ? config!.prizes! : [];
+
+  return (
+    <div className="p-4 border rounded-xl border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="font-medium text-gray-800 dark:text-white/90">
+          {MECHANIC_LABEL[mechanic.type] ?? mechanic.type}
+        </span>
+        {mechanic.isPrimary && (
+          <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
+            Principal
+          </span>
+        )}
+        <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">
+          {prizes.length} prêmio{prizes.length !== 1 ? "s" : ""}
+        </span>
+      </div>
+
+      {prizes.length === 0 ? (
+        <p className="text-sm text-gray-500 dark:text-gray-400 italic">Nenhum prêmio configurado.</p>
+      ) : (
+        <div className="grid gap-2">
+          {prizes.map((p, i) => (
+            <PrizeRow key={p.id ?? `p-${i}`} prize={p} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PrizeRow({ prize }: { prize: PrizeView }) {
+  const typeLabel = prize.type ? PRIZE_TYPE_LABEL[prize.type] ?? prize.type : null;
+  let valueLabel: string | null = null;
+  if (prize.type === "discount_percent" && typeof prize.value === "number") {
+    valueLabel = `${prize.value}%`;
+  } else if (prize.type === "discount_fixed" && typeof prize.value === "number") {
+    valueLabel = `R$ ${(prize.value / 100).toFixed(2).replace(".", ",")}`;
+  }
+
+  const quotaLabel =
+    prize.quota?.limit
+      ? `${prize.quota.limit} ${QUOTA_PERIOD_LABEL[prize.quota.period ?? "total"] ?? prize.quota.period}`
+      : null;
+
+  return (
+    <div className="flex items-center gap-3 p-2.5 bg-white dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+      {/* Thumb visual: imagem OU cor+ícone */}
+      <div
+        className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden shrink-0 border border-gray-200 dark:border-gray-700"
+        style={{ backgroundColor: prize.color ?? "#FFB300" }}
+      >
+        {prize.imageUrl ? (
+          <img src={prize.imageUrl} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <span className="text-xl">{prize.icon ?? "🎁"}</span>
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium text-gray-800 dark:text-white/90 truncate">
+          {prize.label || <span className="italic text-gray-400">sem nome</span>}
+        </div>
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+          {typeLabel && <span>{typeLabel}{valueLabel && ` · ${valueLabel}`}</span>}
+          {quotaLabel && <span>📦 {quotaLabel}</span>}
+          {prize.slices != null && prize.slices > 1 && <span>🎡 {prize.slices} fatias</span>}
         </div>
       </div>
     </div>
