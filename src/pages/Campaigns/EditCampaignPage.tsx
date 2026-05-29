@@ -193,7 +193,7 @@ export default function EditCampaignPage() {
 
 
   const formTab = (
-    <div className="max-w-3xl mx-auto space-y-5">
+    <div className="max-w-3xl mx-auto min-w-0 space-y-5">
         <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
           <h2 className="mb-4 text-lg font-medium text-gray-800 dark:text-white/90">Informações básicas</h2>
           <div className="space-y-4">
@@ -268,7 +268,7 @@ export default function EditCampaignPage() {
       <PageMeta title={`Editar ${campaign.name} | Premify`} description="Edite os detalhes da campanha." />
       <PageBreadcrumb pageTitle={`Editar: ${campaign.name}`} />
 
-      <div className="max-w-4xl mx-auto min-w-0">
+      <div className="max-w-3xl mx-auto min-w-0">
         {/* Barra de ações fixa — visível em todas as abas */}
         <div className="sticky top-0 z-10 mb-4 py-3 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
           <Link
@@ -302,20 +302,22 @@ export default function EditCampaignPage() {
               label: "Personalização",
               icon: "🎨",
               content: (
-                <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-                  <BrandingForm
-                    onSaved={setBranding}
-                    onDraftChange={setBrandingDraft}
-                    showGlobalWarning
-                    hideSaveButton
-                  />
-                  <div className="lg:sticky lg:top-4 lg:self-start">
+                <div className="grid gap-6 lg:grid-cols-[1fr_360px] min-w-0">
+                  <div className="min-w-0">
+                    <BrandingForm
+                      onSaved={setBranding}
+                      onDraftChange={setBrandingDraft}
+                      showGlobalWarning
+                      hideSaveButton
+                    />
+                  </div>
+                  <div className="lg:sticky lg:top-4 lg:self-start min-w-0">
                     <div className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                       👁 Pré-visualização (ao vivo)
                     </div>
                     <div
-                      className="overflow-hidden rounded-[2.5rem] border-[10px] border-gray-800 dark:border-gray-700 shadow-2xl bg-black"
-                      style={{ aspectRatio: "9/16", maxHeight: "70vh" }}
+                      className="overflow-hidden rounded-[2.5rem] border-[10px] border-gray-800 dark:border-gray-700 shadow-2xl bg-black mx-auto"
+                      style={{ aspectRatio: "9/16", maxHeight: "70vh", maxWidth: "320px", width: "100%" }}
                     >
                       <div className="w-full h-full overflow-auto">
                         <CampaignMobilePage
@@ -337,7 +339,7 @@ export default function EditCampaignPage() {
               label: "Cadastro do cliente",
               icon: "📝",
               content: (
-                <div className="max-w-3xl mx-auto">
+                <div className="max-w-3xl mx-auto min-w-0">
                   <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
                     <h2 className="mb-1 text-lg font-medium text-gray-800 dark:text-white/90">
                       Campos do formulário de participação
@@ -358,7 +360,7 @@ export default function EditCampaignPage() {
               label: "Pesquisa",
               icon: "📊",
               content: (
-                <div className="max-w-3xl mx-auto">
+                <div className="max-w-3xl mx-auto min-w-0">
                   <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
                     <h2 className="mb-1 text-lg font-medium text-gray-800 dark:text-white/90">
                       Pesquisa de satisfação
@@ -376,7 +378,7 @@ export default function EditCampaignPage() {
               label: "Limite",
               icon: "🚦",
               content: (
-                <div className="max-w-3xl mx-auto">
+                <div className="max-w-3xl mx-auto min-w-0">
                   <ParticipationLimitEditor value={participationLimit} onChange={setParticipationLimit} />
                 </div>
               ),

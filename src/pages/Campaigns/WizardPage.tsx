@@ -867,11 +867,11 @@ function WizardPreviewPanel({
   };
 
   return (
-    <div className="flex justify-center py-2">
+    <div className="flex justify-center py-2 min-w-0">
       <div
         key={previewBranding.gamificationType ?? "wheel"}
         className="overflow-hidden rounded-[2.5rem] border-[10px] border-gray-800 dark:border-gray-700 shadow-2xl bg-black"
-        style={{ aspectRatio: "9/16", maxHeight: "75vh", width: "min(380px, 100%)" }}
+        style={{ aspectRatio: "9/16", maxHeight: "75vh", maxWidth: "320px", width: "100%" }}
       >
         <div className="w-full h-full overflow-auto">
           <CampaignMobilePage

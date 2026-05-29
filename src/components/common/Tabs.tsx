@@ -25,7 +25,10 @@ export default function Tabs({
 
   return (
     <div className="min-w-0">
-      <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700 mb-4 overflow-x-auto scrollbar-hide">
+      <div
+        className="flex gap-1 border-b border-gray-200 dark:border-gray-700 mb-4 overflow-x-auto [&::-webkit-scrollbar]:hidden"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
         {tabs.map((tab) => {
           const isActive = tab.key === active;
           return (
