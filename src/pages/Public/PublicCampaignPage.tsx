@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { useParams } from "react-router";
+import { useParams, useSearchParams } from "react-router";
 import CampaignMobilePage, {
   type CampaignBranding,
   type CampaignDisplay,
@@ -46,6 +46,9 @@ export default function PublicCampaignPage() {
     campaignSlug?: string;
   }>();
   const campaignIdFromUrl = campaignIdParam ? parseInt(campaignIdParam, 10) : NaN;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const autoEmail = searchParams.get("email");
+  const autoCode = searchParams.get("code");
 
   const [campaign, setCampaign] = useState<PublicCampaign | null>(null);
   const [loading, setLoading] = useState(true);
@@ -105,6 +108,43 @@ export default function PublicCampaignPage() {
     refreshRewards();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, phone, registered]);
+
+  // Auto-login quando vem com ?email=...&code=... no link (do email do carimbo)
+  useEffect(() => {
+    if (!slug || !autoEmail || !autoCode || registered) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await verifyLoginCode(slug, autoEmail.trim(), autoCode.trim());
+        if (cancelled) return;
+        try {
+          const list = await getCustomerRewards(slug, result.phone);
+          if (!cancelled) setRewards(list);
+        } catch { /* segue */ }
+        try {
+          const parts = await getCustomerParticipations(slug, result.phone);
+          if (!cancelled) setParticipations(parts);
+        } catch { /* segue */ }
+        localStorage.setItem(PHONE_STORAGE_KEY, result.phone);
+        if (cancelled) return;
+        setPhone(result.phone);
+        setRegistered(true);
+        // Limpa os query params da URL pra não vazar OTP no histórico/share
+        const next = new URLSearchParams(searchParams);
+        next.delete("email");
+        next.delete("code");
+        setSearchParams(next, { replace: true });
+      } catch {
+        // Falhou (código expirou, etc) — cai pro fluxo manual de login_code
+        if (!cancelled) {
+          setLoginEmail(autoEmail);
+          setAuthPhase("login_code");
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug, autoEmail, autoCode]);
 
   async function handleSurveySubmit(answers: Record<string, unknown>) {
     if (!slug || !phone) return;
