@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 interface CouponConfig {
   discount_percent?: number | string;
@@ -15,17 +15,26 @@ interface Props {
   rewardCode?: string;
   buttonColor: string;
   tenantName: string;
+  /** Em preview do admin, mostra um código fake pra ilustrar como vai aparecer. */
+  demoMode?: boolean;
 }
 
-export default function CouponCard({ config, rewardCode, buttonColor, tenantName }: Props) {
-  const cardRef = useRef<HTMLDivElement>(null);
+export default function CouponCard({
+  config,
+  rewardCode,
+  buttonColor,
+  tenantName,
+  demoMode = false,
+}: Props) {
   const [copied, setCopied] = useState(false);
 
-  // Extrai partes do código (formato C:participationId:ABC12345 → mostra só ABC12345)
+  // Extrai parte final do código (formato C:participationId:ABC12345 → ABC12345).
+  // Em preview, usa código fake.
   const shortCode = useMemo(() => {
-    if (!rewardCode) return null;
-    return rewardCode.split(":").pop() ?? rewardCode;
-  }, [rewardCode]);
+    if (rewardCode) return rewardCode.split(":").pop() ?? rewardCode;
+    if (demoMode) return "DEMO1234";
+    return null;
+  }, [rewardCode, demoMode]);
 
   const discountLabel = useMemo(() => {
     const percent = Number(config.discount_percent ?? 0);
@@ -55,137 +64,150 @@ export default function CouponCard({ config, rewardCode, buttonColor, tenantName
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // fallback: ignora
+      /* ignora */
     }
   }
 
-  function handleDownload() {
-    // Renderiza o card como imagem PNG e baixa.
-    if (!cardRef.current) return;
+  async function handleDownload() {
+    if (!shortCode) return;
 
-    const card = cardRef.current;
-    const w = 600;
-    const h = 900;
+    // Estratégia: se tem arte, baixa a arte original + código sobreposto.
+    // Sem arte, gera um card limpo.
+    const w = 1080;
+    const h = 1080;
     const canvas = document.createElement("canvas");
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const drawCard = () => {
-      // Background
-      ctx.fillStyle = "#1a1a2e";
+    if (config.coupon_image_url) {
+      const img = await loadImage(config.coupon_image_url);
+      // Renderiza arte preservando proporção (contain) centralizada
+      const r = Math.min(w / img.width, h / img.height);
+      const dw = img.width * r;
+      const dh = img.height * r;
+      const dx = (w - dw) / 2;
+      const dy = (h - dh) / 2;
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, dx, dy, dw, dh);
+    } else {
+      // Sem arte: card padrão
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, "#1f2937");
+      grad.addColorStop(1, "#111827");
+      ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
 
-      // Se tem imagem do cupom, desenha como fundo
-      if (config.coupon_image_url) {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => {
-          // Cover
-          const ratio = Math.max(w / img.width, h / img.height);
-          const drawW = img.width * ratio;
-          const drawH = img.height * ratio;
-          ctx.drawImage(img, (w - drawW) / 2, (h - drawH) / 2, drawW, drawH);
-          // Overlay escuro pra legibilidade
-          ctx.fillStyle = "rgba(0,0,0,0.55)";
-          ctx.fillRect(0, 0, w, h);
-          drawOverlayContent();
-          saveImage();
-        };
-        img.onerror = () => {
-          drawOverlayContent();
-          saveImage();
-        };
-        img.src = config.coupon_image_url;
-      } else {
-        drawOverlayContent();
-        saveImage();
-      }
-    };
-
-    const drawOverlayContent = () => {
-      // Header tenant name
       ctx.fillStyle = "white";
-      ctx.font = "bold 38px -apple-system, Segoe UI, Roboto, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(tenantName, w / 2, 100);
-
-      // Discount big
-      ctx.font = "bold 96px -apple-system, Segoe UI, Roboto, sans-serif";
-      ctx.fillStyle = buttonColor;
-      ctx.fillText(discountLabel, w / 2, 280);
-
-      // Code box
-      ctx.fillStyle = "white";
-      const codeBoxY = 360;
-      ctx.fillRect(60, codeBoxY, w - 120, 130);
-
-      ctx.fillStyle = "#111827";
-      ctx.font = "16px -apple-system, Segoe UI, Roboto, sans-serif";
-      ctx.fillText("Código do cupom", w / 2, codeBoxY + 35);
+      ctx.font = "bold 56px -apple-system, Segoe UI, Roboto, sans-serif";
+      ctx.fillText(tenantName, w / 2, 180);
 
       ctx.fillStyle = buttonColor;
-      ctx.font = "bold 56px monospace";
-      ctx.fillText(shortCode ?? "—", w / 2, codeBoxY + 100);
+      ctx.font = "bold 130px -apple-system, Segoe UI, Roboto, sans-serif";
+      ctx.fillText(discountLabel, w / 2, 380);
+    }
 
-      // Info
-      ctx.fillStyle = "white";
-      ctx.font = "20px -apple-system, Segoe UI, Roboto, sans-serif";
-      ctx.fillText(`Válido até ${validUntil}`, w / 2, 560);
-      if (minValueLabel) {
-        ctx.fillText(`Compra mínima: ${minValueLabel}`, w / 2, 600);
-      }
-      ctx.font = "18px -apple-system, Segoe UI, Roboto, sans-serif";
-      ctx.fillStyle = "rgba(255,255,255,0.7)";
-      ctx.fillText("Apresente esse código no caixa", w / 2, h - 80);
-      ctx.fillText("na sua próxima visita", w / 2, h - 50);
-    };
+    // Sobrepõe banner com código no canto inferior (em qualquer caso)
+    drawCodeBanner(ctx, w, h, shortCode, buttonColor, validUntil, minValueLabel);
 
-    const saveImage = () => {
-      canvas.toBlob((blob) => {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `cupom-${shortCode ?? "voucher"}.png`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-      }, "image/png");
-    };
-
-    void card; // suppress unused
-    drawCard();
+    // Salva
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `voucher-${shortCode}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }, "image/png");
   }
 
+  // ─────────────────────────────────────────────────
+  // Quando admin subiu arte: voucher = arte + código sobreposto
+  // ─────────────────────────────────────────────────
+  if (config.coupon_image_url) {
+    return (
+      <div className="rounded-2xl overflow-hidden shadow-2xl bg-black">
+        <div className="relative">
+          {/* Arte do voucher (proporção natural) */}
+          <img
+            src={config.coupon_image_url}
+            alt="Voucher"
+            className="w-full block"
+          />
+
+          {/* Código sobreposto na parte inferior */}
+          {shortCode && (
+            <div className="absolute bottom-0 left-0 right-0 p-3">
+              <div className="bg-white/95 backdrop-blur rounded-xl px-4 py-3 shadow-lg text-center">
+                <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-0.5">
+                  {demoMode ? "Código (exemplo)" : "Seu código"}
+                </div>
+                <div
+                  className="font-mono text-2xl font-extrabold tracking-[0.2em]"
+                  style={{ color: buttonColor }}
+                >
+                  {shortCode}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Ações abaixo do voucher */}
+        <div className="p-3 flex flex-col sm:flex-row gap-2 bg-black/40">
+          {shortCode && (
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="flex-1 h-10 text-xs font-semibold text-gray-900 bg-white hover:bg-gray-100 rounded-lg"
+            >
+              {copied ? "✓ Código copiado" : "📋 Copiar código"}
+            </button>
+          )}
+          {shortCode && (
+            <button
+              type="button"
+              onClick={handleDownload}
+              className="flex-1 h-10 text-xs font-semibold text-white rounded-lg"
+              style={{ backgroundColor: buttonColor }}
+            >
+              ⬇ Baixar voucher
+            </button>
+          )}
+        </div>
+
+        {/* Footer info */}
+        <div className="bg-black/60 text-center py-2 text-[11px] text-white/70">
+          ✅ Válido até {validUntil}
+          {minValueLabel && ` · 💰 Mín. ${minValueLabel}`}
+        </div>
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────
+  // Sem arte: card padrão (fallback bonito)
+  // ─────────────────────────────────────────────────
   return (
-    <div
-      ref={cardRef}
-      className="rounded-2xl overflow-hidden shadow-2xl border border-white/20 relative"
-      style={{
-        background: config.coupon_image_url
-          ? `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.75)), url(${config.coupon_image_url}) center/cover`
-          : "linear-gradient(135deg, #1f2937 0%, #111827 100%)",
-        minHeight: 360,
-      }}
-    >
+    <div className="rounded-2xl overflow-hidden shadow-2xl border border-white/20 bg-gradient-to-br from-gray-800 to-gray-900">
       <div className="p-6 text-center text-white">
         <div className="text-xs uppercase tracking-widest opacity-70 mb-1">Seu cupom</div>
         <div className="text-2xl font-bold mb-5">{tenantName}</div>
 
-        <div
-          className="text-5xl font-extrabold mb-5 drop-shadow-lg"
-          style={{ color: buttonColor }}
-        >
+        <div className="text-5xl font-extrabold mb-5" style={{ color: buttonColor }}>
           {discountLabel}
         </div>
 
         {shortCode ? (
           <div className="bg-white rounded-xl p-4 mb-4 shadow-lg">
             <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
-              Código do cupom
+              {demoMode ? "Código (exemplo)" : "Código do cupom"}
             </div>
             <div
               className="font-mono text-3xl font-bold tracking-widest mb-2"
@@ -230,4 +252,58 @@ export default function CouponCard({ config, rewardCode, buttonColor, tenantName
       </div>
     </div>
   );
+}
+
+// ─────────────────────────────────────────────────
+function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+function drawCodeBanner(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  code: string,
+  brandColor: string,
+  validUntil: string,
+  minValueLabel: string | null,
+) {
+  // Banner branco no rodapé com código grande
+  const bannerH = 220;
+  const padding = 40;
+  const y = h - bannerH - padding;
+
+  // Sombra
+  ctx.fillStyle = "rgba(0,0,0,0.4)";
+  ctx.fillRect(padding, y + 10, w - padding * 2, bannerH);
+
+  // Banner
+  ctx.fillStyle = "rgba(255,255,255,0.97)";
+  ctx.fillRect(padding, y, w - padding * 2, bannerH);
+
+  ctx.textAlign = "center";
+
+  // Label
+  ctx.fillStyle = "#6b7280";
+  ctx.font = "bold 22px -apple-system, Segoe UI, Roboto, sans-serif";
+  ctx.fillText("CÓDIGO DO CUPOM", w / 2, y + 50);
+
+  // Código
+  ctx.fillStyle = brandColor;
+  ctx.font = "bold 96px monospace";
+  ctx.fillText(code, w / 2, y + 140);
+
+  // Info adicional
+  ctx.fillStyle = "#374151";
+  ctx.font = "20px -apple-system, Segoe UI, Roboto, sans-serif";
+  const infoLine = minValueLabel
+    ? `Válido até ${validUntil}  ·  Compra mínima ${minValueLabel}`
+    : `Válido até ${validUntil}`;
+  ctx.fillText(infoLine, w / 2, y + 190);
 }

@@ -365,6 +365,7 @@ export default function CampaignMobilePage({
                 rewardCode={rewardCode}
                 buttonColor={buttonColor}
                 tenantName={branding.tenantName ?? "Estabelecimento"}
+                demoMode={demoMode}
               />
             );
           }
