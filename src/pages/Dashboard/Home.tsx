@@ -61,6 +61,29 @@ export default function Home() {
         </p>
       </div>
 
+      {/* Banner do QR único do estabelecimento */}
+      {user?.tenantSlug && (
+        <Link
+          to="/conta"
+          className="block mb-6 p-4 sm:p-5 bg-gradient-to-r from-brand-50 to-orange-50 dark:from-brand-500/10 dark:to-orange-500/10 border border-brand-200 dark:border-brand-500/30 rounded-2xl hover:shadow-md transition group"
+        >
+          <div className="flex items-center gap-4">
+            <div className="text-4xl shrink-0">📱</div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">
+                QR Code único do estabelecimento
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mt-0.5">
+                Imprima <strong>uma vez</strong> e use sempre. Cliente escaneia e vê todas as campanhas ativas.
+              </p>
+            </div>
+            <div className="text-brand-600 dark:text-brand-300 font-medium text-sm shrink-0 group-hover:translate-x-1 transition-transform">
+              Ver QR →
+            </div>
+          </div>
+        </Link>
+      )}
+
       {error && (
         <div className="mb-4 p-3 text-sm rounded-lg bg-error-50 text-error-700 border border-error-200 dark:bg-error-500/10 dark:text-error-300 dark:border-error-500/30">
           {error}
