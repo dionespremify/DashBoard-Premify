@@ -79,7 +79,7 @@ export default function QRCodeCard({ url, tenantName, campaignName, fgColor = "#
   }
 
   return (
-    <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+    <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
       <div className="flex flex-col sm:flex-row items-center gap-6">
         {/* QR visível (SVG) */}
         <div className="bg-white p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 shrink-0">

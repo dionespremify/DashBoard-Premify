@@ -128,13 +128,13 @@ export default function CampaignDetail() {
       <PageMeta title={`${campaign.name} | Premify`} description={campaign.description ?? "Campanha"} />
       <PageBreadcrumb pageTitle={campaign.name} />
 
-      <div className="grid gap-6">
+      <div className="max-w-3xl mx-auto min-w-0 grid gap-6">
         {/* Header */}
         <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <h1 className="text-2xl font-semibold text-gray-800 dark:text-white/90">{campaign.name}</h1>
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <h1 className="text-xl sm:text-2xl font-semibold text-gray-800 dark:text-white/90 break-words">{campaign.name}</h1>
                 <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${status.className}`}>
                   {status.label}
                 </span>
@@ -152,7 +152,7 @@ export default function CampaignDetail() {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 shrink-0">
               <Button variant="outline" onClick={() => setShowPreview(true)} disabled={updating}>
                 👁 Pré-visualizar
               </Button>
