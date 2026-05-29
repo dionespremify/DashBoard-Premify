@@ -152,7 +152,7 @@ export default function OnboardingPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-8">
               {/* Segmento */}
-              <section className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+              <section className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
                 <h2 className="mb-4 text-lg font-medium text-gray-800 dark:text-white/90">
                   Qual o segmento do seu negócio? <span className="text-error-500">*</span>
                 </h2>
@@ -179,7 +179,7 @@ export default function OnboardingPage() {
               </section>
 
               {/* Franquia + unidades */}
-              <section className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+              <section className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
                 <h2 className="mb-4 text-lg font-medium text-gray-800 dark:text-white/90">
                   Você tem mais de uma unidade?
                 </h2>
@@ -208,7 +208,7 @@ export default function OnboardingPage() {
               </section>
 
               {/* Público-alvo */}
-              <section className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+              <section className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
                 <h2 className="mb-4 text-lg font-medium text-gray-800 dark:text-white/90">
                   Sobre o seu público
                 </h2>
@@ -262,7 +262,7 @@ export default function OnboardingPage() {
               </section>
 
               {/* Operação */}
-              <section className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+              <section className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
                 <h2 className="mb-4 text-lg font-medium text-gray-800 dark:text-white/90">
                   Sobre a sua operação
                 </h2>

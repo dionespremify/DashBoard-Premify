@@ -106,7 +106,7 @@ function RedeemTab() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <form onSubmit={handleSearch} className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+      <form onSubmit={handleSearch} className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
         <h2 className="text-lg font-semibold text-gray-800 dark:text-white/90 mb-1">
           Digite o código do prêmio
         </h2>
@@ -142,7 +142,7 @@ function RedeemTab() {
 
       {/* Resultado */}
       {reward && !error && (
-        <div className="mt-5 p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+        <div className="mt-5 p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
           {success ? (
             <div className="text-center">
               <div className="text-6xl mb-3">🎉</div>

@@ -107,7 +107,7 @@ export default function AccountPage() {
       <PageMeta title="Configurações de conta | Premify" description="Gerencie seu plano e dados da empresa." />
       <PageBreadcrumb pageTitle="Configurações de conta" />
 
-      <div className="max-w-3xl space-y-5">
+      <div className="max-w-3xl mx-auto space-y-5">
         {/* Plano atual */}
         {account?.plan && <PlanCard plan={account.plan} trialEndsAt={account.company.trialEndsAt} />}
 
@@ -121,7 +121,7 @@ export default function AccountPage() {
 
         {/* Form da empresa */}
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+          <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
             <h2 className="mb-1 text-lg font-medium text-gray-800 dark:text-white/90">Dados da empresa</h2>
             <p className="mb-5 text-sm text-gray-500 dark:text-gray-400">
               Essas informações aparecem em recibos, emails e na sua página pública.
@@ -169,7 +169,7 @@ export default function AccountPage() {
             </div>
           </div>
 
-          <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+          <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
             <h2 className="mb-4 text-lg font-medium text-gray-800 dark:text-white/90">Endereço</h2>
             <div className="grid gap-4 sm:grid-cols-6">
               <div className="sm:col-span-4">

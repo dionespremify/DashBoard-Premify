@@ -221,15 +221,26 @@ export default function WizardPage() {
         {phase === "recommendation" && step?.recommendation && (
           <>
             {/* Barra de ações fixa — visível em todas as abas */}
-            <div className="sticky top-0 z-10 -mx-2 mb-4 px-2 py-3 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-3">
+            <div className="sticky top-0 z-10 -mx-2 mb-4 px-2 py-3 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
               <Button
                 variant="outline"
                 onClick={() => (history.length > 0 ? goBack() : restart())}
               >
-                ← Voltar
+                <span className="hidden sm:inline">← Voltar</span>
+                <span className="sm:hidden">←</span>
               </Button>
               <Button onClick={handleCreate} disabled={!campaignName.trim()}>
-                {campaignName.trim() ? "💾 Criar campanha" : "Dê um nome na aba Configuração"}
+                {campaignName.trim() ? (
+                  <>
+                    <span className="hidden sm:inline">💾 Criar campanha</span>
+                    <span className="sm:hidden">💾 Criar</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="hidden sm:inline">Dê um nome na aba Configuração</span>
+                    <span className="sm:hidden">Falta o nome</span>
+                  </>
+                )}
               </Button>
             </div>
             {error && (
@@ -295,7 +306,7 @@ export default function WizardPage() {
                 label: "Cadastro do cliente",
                 icon: "📝",
                 content: (
-                  <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+                  <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
                     <h2 className="mb-1 text-lg font-medium text-gray-800 dark:text-white/90">
                       Campos do formulário de participação
                     </h2>
@@ -314,7 +325,7 @@ export default function WizardPage() {
                 label: "Pesquisa",
                 icon: "📊",
                 content: (
-                  <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+                  <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
                     <h2 className="mb-1 text-lg font-medium text-gray-800 dark:text-white/90">
                       Pesquisa de satisfação
                     </h2>
@@ -379,7 +390,7 @@ function WizardQuestionView({
   stepIndex: number;
 }) {
   return (
-    <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+    <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
       <div className="mb-2 text-xs font-medium uppercase tracking-wide text-brand-500 dark:text-brand-400">
         Passo {stepIndex}
       </div>
@@ -483,7 +494,7 @@ function WizardRecommendationView({
       </div>
 
       {/* Dimensionamento */}
-      <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+      <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
         <h3 className="mb-4 text-lg font-medium text-gray-800 dark:text-white/90">
           Configure os detalhes
         </h3>

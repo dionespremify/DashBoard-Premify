@@ -8,7 +8,7 @@ export default function BrandingPage() {
       <PageMeta title="Personalização | Premify" description="Customize o visual do seu site white-label." />
       <PageBreadcrumb pageTitle="Personalização" />
 
-      <div className="max-w-3xl">
+      <div className="max-w-3xl mx-auto">
         <BrandingForm />
       </div>
     </>

@@ -107,7 +107,7 @@ export default function UsersPage() {
 
       <div className="max-w-5xl mx-auto space-y-5">
         {/* Header com slots + botão */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:p-5 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
           <div>
             <h2 className="text-lg font-medium text-gray-800 dark:text-white/90">Equipe</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -134,29 +134,29 @@ export default function UsersPage() {
 
         {/* Lista de usuários */}
         <section className="bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
-          <h3 className="px-6 pt-5 pb-2 text-base font-medium text-gray-800 dark:text-white/90">
+          <h3 className="px-4 sm:px-6 pt-5 pb-2 text-base font-medium text-gray-800 dark:text-white/90">
             Usuários ativos
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
                 <tr>
-                  <th className="px-6 py-3 font-medium">Nome</th>
-                  <th className="px-6 py-3 font-medium">Email</th>
-                  <th className="px-6 py-3 font-medium">Perfil</th>
-                  <th className="px-6 py-3 font-medium">Status</th>
-                  <th className="px-6 py-3 font-medium text-right">Ações</th>
+                  <th className="px-4 sm:px-6 py-3 font-medium">Nome</th>
+                  <th className="px-4 sm:px-6 py-3 font-medium">Email</th>
+                  <th className="px-4 sm:px-6 py-3 font-medium">Perfil</th>
+                  <th className="px-4 sm:px-6 py-3 font-medium">Status</th>
+                  <th className="px-4 sm:px-6 py-3 font-medium text-right">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {(data?.users ?? []).map((u) => (
                   <tr key={u.id} className="border-b border-gray-100 dark:border-gray-700/50 last:border-0">
-                    <td className="px-6 py-4 text-gray-800 dark:text-gray-100">
+                    <td className="px-4 sm:px-6 py-4 text-gray-800 dark:text-gray-100">
                       {u.name}
                       {u.isSelf && <span className="ml-2 text-xs text-gray-400">(você)</span>}
                     </td>
-                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{u.email}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 sm:px-6 py-4 text-gray-600 dark:text-gray-300">{u.email}</td>
+                    <td className="px-4 sm:px-6 py-4">
                       {u.isSelf ? (
                         <span className="text-gray-600 dark:text-gray-300">{ROLE_LABELS[u.role] ?? u.role}</span>
                       ) : (
@@ -166,7 +166,7 @@ export default function UsersPage() {
                         />
                       )}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 sm:px-6 py-4">
                       <span className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full ${
                         u.isActive
                           ? "bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300"
@@ -175,7 +175,7 @@ export default function UsersPage() {
                         {u.isActive ? "Ativo" : "Inativo"}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-4 sm:px-6 py-4 text-right">
                       {!u.isSelf && (
                         <button
                           type="button"
@@ -196,7 +196,7 @@ export default function UsersPage() {
         {/* Convites pendentes */}
         {(data?.pendingInvitations.length ?? 0) > 0 && (
           <section className="bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
-            <h3 className="px-6 pt-5 pb-2 text-base font-medium text-gray-800 dark:text-white/90">
+            <h3 className="px-4 sm:px-6 pt-5 pb-2 text-base font-medium text-gray-800 dark:text-white/90">
               Convites pendentes
             </h3>
             <div className="overflow-x-auto">
@@ -213,13 +213,13 @@ export default function UsersPage() {
                 <tbody>
                   {data!.pendingInvitations.map((inv) => (
                     <tr key={inv.id} className="border-b border-gray-100 dark:border-gray-700/50 last:border-0">
-                      <td className="px-6 py-4 text-gray-800 dark:text-gray-100">{inv.name}</td>
-                      <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{inv.email}</td>
-                      <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{ROLE_LABELS[inv.role] ?? inv.role}</td>
-                      <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
+                      <td className="px-4 sm:px-6 py-4 text-gray-800 dark:text-gray-100">{inv.name}</td>
+                      <td className="px-4 sm:px-6 py-4 text-gray-600 dark:text-gray-300">{inv.email}</td>
+                      <td className="px-4 sm:px-6 py-4 text-gray-600 dark:text-gray-300">{ROLE_LABELS[inv.role] ?? inv.role}</td>
+                      <td className="px-4 sm:px-6 py-4 text-gray-600 dark:text-gray-300">
                         {new Date(inv.expiresAt).toLocaleDateString("pt-BR")}
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-4 sm:px-6 py-4 text-right">
                         <button
                           type="button"
                           onClick={() => handleRevoke(inv)}

@@ -194,7 +194,7 @@ export default function EditCampaignPage() {
 
   const formTab = (
     <div className="max-w-3xl mx-auto space-y-5">
-        <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+        <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
           <h2 className="mb-4 text-lg font-medium text-gray-800 dark:text-white/90">Informações básicas</h2>
           <div className="space-y-4">
             <div>
@@ -223,7 +223,7 @@ export default function EditCampaignPage() {
         </div>
 
         {dimensionQuestions.length > 0 ? (
-          <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+          <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
             <h2 className="mb-4 text-lg font-medium text-gray-800 dark:text-white/90">Configuração da mecânica</h2>
             <div className="space-y-5">
               {dimensionQuestions.map((q) => (
@@ -270,15 +270,21 @@ export default function EditCampaignPage() {
 
       <div className="max-w-4xl mx-auto">
         {/* Barra de ações fixa — visível em todas as abas */}
-        <div className="sticky top-0 z-10 -mx-2 mb-4 px-2 py-3 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-3">
+        <div className="sticky top-0 z-10 -mx-2 mb-4 px-2 py-3 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
           <Link
             to={`/campanhas/${campaign.id}`}
-            className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+            className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 whitespace-nowrap"
           >
-            ← Cancelar
+            <span className="hidden sm:inline">← Cancelar</span>
+            <span className="sm:hidden">←</span>
           </Link>
           <Button onClick={handleSubmit} disabled={saving}>
-            {saving ? "Salvando…" : "💾 Salvar tudo"}
+            {saving ? "Salvando…" : (
+              <>
+                <span className="hidden sm:inline">💾 Salvar tudo</span>
+                <span className="sm:hidden">💾 Salvar</span>
+              </>
+            )}
           </Button>
         </div>
 
@@ -332,7 +338,7 @@ export default function EditCampaignPage() {
               icon: "📝",
               content: (
                 <div className="max-w-3xl mx-auto">
-                  <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+                  <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
                     <h2 className="mb-1 text-lg font-medium text-gray-800 dark:text-white/90">
                       Campos do formulário de participação
                     </h2>
@@ -353,7 +359,7 @@ export default function EditCampaignPage() {
               icon: "📊",
               content: (
                 <div className="max-w-3xl mx-auto">
-                  <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+                  <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
                     <h2 className="mb-1 text-lg font-medium text-gray-800 dark:text-white/90">
                       Pesquisa de satisfação
                     </h2>

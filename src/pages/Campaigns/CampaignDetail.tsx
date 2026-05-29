@@ -130,7 +130,7 @@ export default function CampaignDetail() {
 
       <div className="grid gap-6">
         {/* Header */}
-        <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+        <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-2">
@@ -213,7 +213,7 @@ export default function CampaignDetail() {
         )}
 
         {/* Mecânicas */}
-        <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+        <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
           <h2 className="mb-4 text-lg font-medium text-gray-800 dark:text-white/90">
             Mecânicas da campanha
           </h2>

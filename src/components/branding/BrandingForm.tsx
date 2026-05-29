@@ -116,7 +116,7 @@ export default function BrandingForm({ onSaved, onDraftChange, showGlobalWarning
         </div>
       )}
 
-      <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+      <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
         <h2 className="mb-1 text-lg font-medium text-gray-800 dark:text-white/90">Tipo de gamificação</h2>
         <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
           Define como o cliente final vai descobrir o prêmio. Os campos da campanha se adaptam ao tipo.
@@ -124,7 +124,7 @@ export default function BrandingForm({ onSaved, onDraftChange, showGlobalWarning
         <GamificationTypeSelector value={gamificationType} onChange={setGamificationType} />
       </div>
 
-      <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+      <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
         <h2 className="mb-4 text-lg font-medium text-gray-800 dark:text-white/90">Marca</h2>
         <div>
           <Label>Logo do estabelecimento</Label>
@@ -139,7 +139,7 @@ export default function BrandingForm({ onSaved, onDraftChange, showGlobalWarning
         </div>
       </div>
 
-      <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+      <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
         <h2 className="mb-4 text-lg font-medium text-gray-800 dark:text-white/90">Cores</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
@@ -169,7 +169,7 @@ export default function BrandingForm({ onSaved, onDraftChange, showGlobalWarning
         </div>
       </div>
 
-      <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+      <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
         <h2 className="mb-4 text-lg font-medium text-gray-800 dark:text-white/90">Imagem de fundo (opcional)</h2>
         <div>
           <Label>Imagem de fundo da página do cliente</Label>
@@ -185,7 +185,7 @@ export default function BrandingForm({ onSaved, onDraftChange, showGlobalWarning
       </div>
 
       {gamificationType === "wheel" && (
-        <div className="p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+        <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
           <h2 className="mb-1 text-lg font-medium text-gray-800 dark:text-white/90">Estilo da roleta</h2>
           <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
             Aplicado a todas as suas campanhas de roleta.
