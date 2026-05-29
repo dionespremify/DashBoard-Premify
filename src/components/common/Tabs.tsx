@@ -24,8 +24,8 @@ export default function Tabs({
   }
 
   return (
-    <div>
-      <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700 mb-4 overflow-x-auto scrollbar-hide -mx-2 px-2">
+    <div className="min-w-0">
+      <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700 mb-4 overflow-x-auto scrollbar-hide">
         {tabs.map((tab) => {
           const isActive = tab.key === active;
           return (
@@ -47,7 +47,7 @@ export default function Tabs({
       </div>
 
       {tabs.map((tab) => (
-        <div key={tab.key} className={tab.key === active ? "block" : "hidden"}>
+        <div key={tab.key} className={`min-w-0 ${tab.key === active ? "block" : "hidden"}`}>
           {tab.content}
         </div>
       ))}

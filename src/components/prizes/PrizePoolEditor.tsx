@@ -157,7 +157,7 @@ export default function PrizePoolEditor({
                   className="h-10 px-3 text-sm border border-gray-300 rounded-lg bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:[color-scheme:dark]"
                   placeholder="Nome do prêmio (ex: Caipirinha grátis)"
                 />
-                <div className="grid grid-cols-[1fr_120px] gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_120px] gap-2">
                   <select
                     value={prize.type}
                     onChange={(e) => updatePrize(idx, { type: e.target.value as PrizeDefinition["type"] })}

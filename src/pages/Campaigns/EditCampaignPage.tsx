@@ -268,9 +268,9 @@ export default function EditCampaignPage() {
       <PageMeta title={`Editar ${campaign.name} | Premify`} description="Edite os detalhes da campanha." />
       <PageBreadcrumb pageTitle={`Editar: ${campaign.name}`} />
 
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto min-w-0">
         {/* Barra de ações fixa — visível em todas as abas */}
-        <div className="sticky top-0 z-10 -mx-2 mb-4 px-2 py-3 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
+        <div className="sticky top-0 z-10 mb-4 py-3 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
           <Link
             to={`/campanhas/${campaign.id}`}
             className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 whitespace-nowrap"

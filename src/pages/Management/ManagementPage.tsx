@@ -114,7 +114,7 @@ function RedeemTab() {
           Peça o cliente pra mostrar a tela do prêmio. O código tem 8 caracteres.
         </p>
 
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full min-w-0">
           <input
             ref={inputRef}
             type="text"
@@ -122,12 +122,13 @@ function RedeemTab() {
             onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8))}
             placeholder="ABC12345"
             autoComplete="off"
-            className="flex-1 h-14 px-4 text-2xl font-mono font-bold tracking-[0.4em] text-center uppercase border-2 border-gray-300 dark:border-gray-700 rounded-xl focus:border-brand-500 focus:outline-none dark:bg-gray-900 dark:text-white/90"
+            inputMode="text"
+            className="flex-1 min-w-0 w-full h-14 px-3 text-lg sm:text-2xl font-mono font-bold tracking-[0.2em] sm:tracking-[0.4em] text-center uppercase border-2 border-gray-300 dark:border-gray-700 rounded-xl focus:border-brand-500 focus:outline-none dark:bg-gray-900 dark:text-white/90"
           />
           <button
             type="submit"
             disabled={searching || code.length < 4}
-            className="px-6 h-14 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 rounded-xl disabled:opacity-50"
+            className="w-full sm:w-auto px-6 h-14 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 rounded-xl disabled:opacity-50"
           >
             {searching ? "Buscando…" : "Buscar"}
           </button>

@@ -204,7 +204,7 @@ export default function WizardPage() {
       <PageMeta title="Nova campanha | Premify" description="Crie uma nova campanha guiada pelo wizard." />
       <PageBreadcrumb pageTitle="Nova campanha" />
 
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-3xl mx-auto min-w-0">
         {phase === "loading" && (
           <div className="p-8 text-center text-gray-500 dark:text-gray-400">Carregando…</div>
         )}
@@ -221,7 +221,7 @@ export default function WizardPage() {
         {phase === "recommendation" && step?.recommendation && (
           <>
             {/* Barra de ações fixa — visível em todas as abas */}
-            <div className="sticky top-0 z-10 -mx-2 mb-4 px-2 py-3 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
+            <div className="sticky top-0 z-10 mb-4 py-3 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
               <Button
                 variant="outline"
                 onClick={() => (history.length > 0 ? goBack() : restart())}
