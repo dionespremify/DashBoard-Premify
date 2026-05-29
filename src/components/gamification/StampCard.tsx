@@ -1,5 +1,6 @@
 interface StampConfig {
   target_stamps?: number;
+  stamp_mode?: "per_visit" | "min_value" | string;
   min_value_cents?: number;
   reward?: string;
   stamp_image_url?: string;
@@ -98,13 +99,13 @@ export default function StampCard({ config, progress, buttonColor = "#FF6B35" }:
         </div>
       ) : (
         <div className="text-center text-xs opacity-80 leading-relaxed">
-          {config.min_value_cents && config.min_value_cents > 0 ? (
+          {config.stamp_mode === "min_value" && config.min_value_cents && config.min_value_cents > 0 ? (
             <>
               📍 Faça uma compra acima de <strong>R$ {minValueReais}</strong> e peça pra equipe
               registrar — você ganha 1 carimbo!
             </>
           ) : (
-            <>📍 Faça uma compra e peça pra equipe registrar — você ganha 1 carimbo!</>
+            <>📍 A cada visita, peça pra equipe registrar — você ganha 1 carimbo!</>
           )}
         </div>
       )}
