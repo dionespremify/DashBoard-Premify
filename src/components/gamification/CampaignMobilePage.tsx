@@ -6,6 +6,7 @@ import PenaltyGame3D from "./PenaltyGame3D";
 import MinefieldGame from "./MinefieldGame";
 import CelebrationModal from "./CelebrationModal";
 import StampCard from "./StampCard";
+import CouponCard from "./CouponCard";
 import type { PrizeDefinition } from "../prizes/PrizePoolEditor";
 
 export type GamificationType = "wheel" | "scratch" | "plinko" | "penalty";
@@ -343,7 +344,7 @@ export default function CampaignMobilePage({
           </div>
         )}
 
-        {/* Cartão fidelidade (stamps) — UI dedicada */}
+        {/* Cartão fidelidade (stamps) ou Cupom (coupon) — UI dedicada */}
         {!hideMechanic && !wheel && (() => {
           const stamps = campaign.mechanics.find((m) => m.type === "stamps");
           if (stamps) {
@@ -355,6 +356,19 @@ export default function CampaignMobilePage({
               />
             );
           }
+
+          const coupon = campaign.mechanics.find((m) => m.type === "coupon");
+          if (coupon) {
+            return (
+              <CouponCard
+                config={coupon.config ?? {}}
+                rewardCode={rewardCode}
+                buttonColor={buttonColor}
+                tenantName={branding.tenantName ?? "Estabelecimento"}
+              />
+            );
+          }
+
           return (
             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20">
               <p className="text-sm opacity-80 text-center">
