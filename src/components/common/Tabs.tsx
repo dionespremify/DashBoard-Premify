@@ -25,7 +25,7 @@ export default function Tabs({
 
   return (
     <div>
-      <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700 mb-4">
+      <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700 mb-4 overflow-x-auto scrollbar-hide -mx-2 px-2">
         {tabs.map((tab) => {
           const isActive = tab.key === active;
           return (
@@ -33,13 +33,13 @@ export default function Tabs({
               type="button"
               key={tab.key}
               onClick={() => pick(tab.key)}
-              className={`px-4 py-2.5 text-sm font-medium transition border-b-2 -mb-px ${
+              className={`shrink-0 whitespace-nowrap px-3 sm:px-4 py-2.5 text-sm font-medium transition border-b-2 -mb-px ${
                 isActive
                   ? "border-brand-500 text-brand-600 dark:text-brand-300"
                   : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
-              {tab.icon && <span className="mr-2">{tab.icon}</span>}
+              {tab.icon && <span className="mr-1.5">{tab.icon}</span>}
               {tab.label}
             </button>
           );
