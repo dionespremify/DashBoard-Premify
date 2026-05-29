@@ -251,6 +251,31 @@ export default function WizardPage() {
           <Tabs
             tabs={[
               {
+                key: "config",
+                label: "Configuração",
+                icon: "⚙️",
+                content: (
+                  <WizardRecommendationView
+                    recommendation={step.recommendation}
+                    dimensioning={dimensioning}
+                    onDimensioningChange={(key, value) => setDimensioning((d) => ({ ...d, [key]: value }))}
+                    campaignName={campaignName}
+                    onCampaignNameChange={setCampaignName}
+                    startsAt={startsAt}
+                    onStartsAtChange={setStartsAt}
+                    endsAt={endsAt}
+                    onEndsAtChange={setEndsAt}
+                    activateImmediately={activateImmediately}
+                    onActivateImmediatelyChange={setActivateImmediately}
+                    onCreate={handleCreate}
+                    onBack={history.length > 0 ? goBack : undefined}
+                    onRestart={restart}
+                    creating={false}
+                    gamificationType={(brandingDraft ?? branding)?.gamificationType ?? "wheel"}
+                  />
+                ),
+              },
+              {
                 key: "branding",
                 label: "Personalização",
                 icon: "🎨",
@@ -275,31 +300,6 @@ export default function WizardPage() {
                       />
                     </div>
                   </div>
-                ),
-              },
-              {
-                key: "config",
-                label: "Configuração",
-                icon: "⚙️",
-                content: (
-                  <WizardRecommendationView
-                    recommendation={step.recommendation}
-                    dimensioning={dimensioning}
-                    onDimensioningChange={(key, value) => setDimensioning((d) => ({ ...d, [key]: value }))}
-                    campaignName={campaignName}
-                    onCampaignNameChange={setCampaignName}
-                    startsAt={startsAt}
-                    onStartsAtChange={setStartsAt}
-                    endsAt={endsAt}
-                    onEndsAtChange={setEndsAt}
-                    activateImmediately={activateImmediately}
-                    onActivateImmediatelyChange={setActivateImmediately}
-                    onCreate={handleCreate}
-                    onBack={history.length > 0 ? goBack : undefined}
-                    onRestart={restart}
-                    creating={false}
-                    gamificationType={(brandingDraft ?? branding)?.gamificationType ?? "wheel"}
-                  />
                 ),
               },
               {

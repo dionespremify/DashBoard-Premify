@@ -302,6 +302,7 @@ export default function EditCampaignPage() {
 
         <Tabs
           tabs={[
+            { key: "config", label: "Configuração", icon: "⚙️", content: formTab },
             {
               key: "branding",
               label: "Personalização",
@@ -339,7 +340,6 @@ export default function EditCampaignPage() {
                 </div>
               ),
             },
-            { key: "config", label: "Configuração", icon: "⚙️", content: formTab },
             {
               key: "form",
               label: "Cadastro do cliente",
