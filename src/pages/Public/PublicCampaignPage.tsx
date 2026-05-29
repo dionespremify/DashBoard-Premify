@@ -541,7 +541,13 @@ export default function PublicCampaignPage() {
           hideMechanic={mechanicLocked || gameFinished}
           autoSpinOnMount={revealingReward !== null}
           winningPrizeIndex={winningIndex}
-          rewardCode={revealingReward?.code}
+          rewardCode={
+            // Pra mecânicas tipo cupom/stamps, o reward já vem pronto sem precisar de "reveal"
+            revealingReward?.code
+            ?? (display.mechanics.some((m) => m.type === "coupon" || m.type === "stamps")
+              ? pendingReward?.code
+              : undefined)
+          }
           onSpinEnd={() => setGameFinished(true)}
           bottomSlot={bottomSlot}
         />
