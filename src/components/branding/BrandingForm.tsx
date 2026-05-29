@@ -22,9 +22,15 @@ interface Props {
   showGlobalWarning?: boolean;
   /** Esconde o botão "Salvar personalização" — útil quando o parent controla o save. */
   hideSaveButton?: boolean;
+  /**
+   * Esconde o seletor de tipo de gamificação (roleta/raspadinha/penalty/etc).
+   * Usado em blueprints que têm layout próprio (cartão fidelidade, cashback) —
+   * a gamificação só faz sentido pra prêmios instantâneos (reward_timing="instant").
+   */
+  hideGamificationType?: boolean;
 }
 
-export default function BrandingForm({ onSaved, onDraftChange, showGlobalWarning, hideSaveButton }: Props) {
+export default function BrandingForm({ onSaved, onDraftChange, showGlobalWarning, hideSaveButton, hideGamificationType }: Props) {
   const [branding, setBranding] = useState<Branding | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -116,13 +122,15 @@ export default function BrandingForm({ onSaved, onDraftChange, showGlobalWarning
         </div>
       )}
 
-      <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
-        <h2 className="mb-1 text-lg font-medium text-gray-800 dark:text-white/90">Tipo de gamificação</h2>
-        <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-          Define como o cliente final vai descobrir o prêmio. Os campos da campanha se adaptam ao tipo.
-        </p>
-        <GamificationTypeSelector value={gamificationType} onChange={setGamificationType} />
-      </div>
+      {!hideGamificationType && (
+        <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
+          <h2 className="mb-1 text-lg font-medium text-gray-800 dark:text-white/90">Tipo de gamificação</h2>
+          <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
+            Define como o cliente final vai descobrir o prêmio. Os campos da campanha se adaptam ao tipo.
+          </p>
+          <GamificationTypeSelector value={gamificationType} onChange={setGamificationType} />
+        </div>
+      )}
 
       <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
         <h2 className="mb-4 text-lg font-medium text-gray-800 dark:text-white/90">Marca</h2>
@@ -184,7 +192,7 @@ export default function BrandingForm({ onSaved, onDraftChange, showGlobalWarning
         </div>
       </div>
 
-      {gamificationType === "wheel" && (
+      {gamificationType === "wheel" && !hideGamificationType && (
         <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
           <h2 className="mb-1 text-lg font-medium text-gray-800 dark:text-white/90">Estilo da roleta</h2>
           <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">

@@ -309,6 +309,7 @@ export default function EditCampaignPage() {
                       onDraftChange={setBrandingDraft}
                       showGlobalWarning
                       hideSaveButton
+                      hideGamificationType={campaign.blueprint?.rewardTiming !== "instant"}
                     />
                   </div>
                   <div className="lg:sticky lg:top-4 lg:self-start min-w-0">

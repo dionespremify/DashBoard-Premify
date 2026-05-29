@@ -41,6 +41,9 @@ export interface WizardRecommendation {
   icon?: string | null;
   mechanics: WizardMechanicPreview[];
   dimensionQuestions: WizardDimensionQuestion[];
+  winnerPool?: string | null;
+  rewardTiming?: string | null;
+  returnMotivator?: string | null;
 }
 
 export interface WizardStepResponse {

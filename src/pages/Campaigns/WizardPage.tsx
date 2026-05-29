@@ -261,6 +261,7 @@ export default function WizardPage() {
                       onDraftChange={setBrandingDraft}
                       showGlobalWarning
                       hideSaveButton
+                      hideGamificationType={step.recommendation.rewardTiming !== "instant"}
                     />
                     <div className="lg:sticky lg:top-4 lg:self-start">
                       <div className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">

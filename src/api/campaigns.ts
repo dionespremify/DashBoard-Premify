@@ -33,6 +33,9 @@ export interface BlueprintEditContext {
   description?: string | null;
   icon?: string | null;
   dimensionQuestions: BlueprintDimensionQuestion[];
+  winnerPool?: string | null;
+  rewardTiming?: string | null;
+  returnMotivator?: string | null;
 }
 
 export type CustomerFormFieldKey =
