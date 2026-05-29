@@ -25,6 +25,8 @@ export interface BlueprintDimensionQuestion {
   max?: unknown;
   placeholder?: string | null;
   options?: BlueprintDimensionOption[] | null;
+  showIfKey?: string | null;
+  showIfValue?: string | null;
 }
 
 export interface BlueprintEditContext {

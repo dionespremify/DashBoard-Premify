@@ -226,16 +226,21 @@ export default function EditCampaignPage() {
           <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-sm dark:bg-gray-800/50 dark:border dark:border-gray-700">
             <h2 className="mb-4 text-lg font-medium text-gray-800 dark:text-white/90">Configuração da mecânica</h2>
             <div className="space-y-5">
-              {dimensionQuestions.map((q) => (
-                <DimensionInput
-                  key={q.key}
-                  question={q}
-                  value={dimensioning[q.key]}
-                  onChange={(v) => setDimensioning((d) => ({ ...d, [q.key]: v }))}
-                  siblings={dimensioning}
-                  gamificationType={(brandingDraft ?? branding)?.gamificationType ?? "wheel"}
-                />
-              ))}
+              {dimensionQuestions
+                .filter((q) => {
+                  if (!q.showIfKey || !q.showIfValue) return true;
+                  return dimensioning[q.showIfKey] === q.showIfValue;
+                })
+                .map((q) => (
+                  <DimensionInput
+                    key={q.key}
+                    question={q}
+                    value={dimensioning[q.key]}
+                    onChange={(v) => setDimensioning((d) => ({ ...d, [q.key]: v }))}
+                    siblings={dimensioning}
+                    gamificationType={(brandingDraft ?? branding)?.gamificationType ?? "wheel"}
+                  />
+                ))}
             </div>
           </div>
         ) : campaign.blueprintCode ? (

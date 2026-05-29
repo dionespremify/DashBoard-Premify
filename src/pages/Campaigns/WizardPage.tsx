@@ -512,16 +512,22 @@ function WizardRecommendationView({
             />
           </div>
 
-          {recommendation.dimensionQuestions.map((q) => (
-            <DimensionInput
-              key={q.key}
-              question={q}
-              value={dimensioning[q.key]}
-              onChange={(v) => onDimensioningChange(q.key, v)}
-              siblings={dimensioning}
-              gamificationType={gamificationType ?? "wheel"}
-            />
-          ))}
+          {recommendation.dimensionQuestions
+            .filter((q) => {
+              // Esconde campos condicionais cuja dependência ainda não foi escolhida
+              if (!q.showIfKey || !q.showIfValue) return true;
+              return dimensioning[q.showIfKey] === q.showIfValue;
+            })
+            .map((q) => (
+              <DimensionInput
+                key={q.key}
+                question={q}
+                value={dimensioning[q.key]}
+                onChange={(v) => onDimensioningChange(q.key, v)}
+                siblings={dimensioning}
+                gamificationType={gamificationType ?? "wheel"}
+              />
+            ))}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>

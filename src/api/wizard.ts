@@ -26,12 +26,15 @@ export interface WizardMechanicPreview {
 export interface WizardDimensionQuestion {
   key: string;
   label: string;
-  type: string; // "int" | "percent" | "money" | "text" | "date" | "boolean" | "prize_pool" | "select"
+  type: string; // "int" | "percent" | "money" | "text" | "date" | "boolean" | "prize_pool" | "select" | "image"
   default?: unknown;
   min?: unknown;
   max?: unknown;
   placeholder?: string;
   options?: { value: string; label: string; icon?: string; description?: string }[];
+  /** Mostra esse campo só se outro question (showIfKey) tiver valor (showIfValue). */
+  showIfKey?: string;
+  showIfValue?: string;
 }
 
 export interface WizardRecommendation {
