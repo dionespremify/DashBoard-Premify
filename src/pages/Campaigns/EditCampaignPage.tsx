@@ -8,6 +8,7 @@ import Input from "../../components/form/input/InputField";
 import { extractApiError } from "../../api/client";
 import { DEFAULT_CUSTOMER_FORM, getCampaign, updateCampaign, type Campaign, type CustomerFormField, type ParticipationLimitConfig } from "../../api/campaigns";
 import ParticipationLimitEditor from "../../components/campaigns/ParticipationLimitEditor";
+import FlowConfigEditor from "../../components/campaigns/FlowConfigEditor";
 import { getBranding, updateBranding, type Branding } from "../../api/branding";
 import BrandingForm from "../../components/branding/BrandingForm";
 import type { WizardDimensionQuestion } from "../../api/wizard";
@@ -392,6 +393,16 @@ export default function EditCampaignPage() {
               content: (
                 <div className="max-w-3xl mx-auto min-w-0">
                   <ParticipationLimitEditor value={participationLimit} onChange={setParticipationLimit} />
+                </div>
+              ),
+            },
+            {
+              key: "flow",
+              label: "Fluxo (JSON)",
+              icon: "⚙️",
+              content: (
+                <div className="max-w-4xl mx-auto min-w-0">
+                  <FlowConfigEditor campaignId={campaign.id} />
                 </div>
               ),
             },
